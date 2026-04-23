@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useToast } from '../components/Toast'
+import LiveVariantConfig from '../components/LiveVariantConfig'
 
 const mockVariants = [
-  { id: 'ah3kl', title: 'Pricing First', description: 'Moving pricing above fold', lp2l: '8.4%' },
-  { id: 'bx9mq', title: 'Social Proof Heavy', description: 'Leading with testimonials', lp2l: '6.1%' },
-  { id: 'cx3df', title: 'Benefit Led', description: 'Opening with key benefits', lp2l: '—' },
+  { id: 'ah3kl', title: 'Pricing First', description: 'Moving pricing above fold to increase intent', lp2l: '8.4%', content: 'mta' },
+  { id: 'bx9mq', title: 'Social Proof Heavy', description: 'Leading with testimonials before product details', lp2l: '6.1%', content: 'fallback' },
+  { id: 'cx3df', title: 'Benefit Led', description: 'Opening with key product benefits before price', lp2l: '—', content: 'mta' },
 ]
 
 const mockPublishes = [
@@ -28,171 +29,20 @@ const card = { background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius:
 const cardHeader = { padding: '14px 20px', borderBottom: '1px solid #E2E8F0', fontSize: 13, fontWeight: 600, color: '#0F172A', background: '#EEF2F8', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }
 const thStyle = { padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#64748B', letterSpacing: '0.5px', textTransform: 'uppercase', borderBottom: '1px solid #E2E8F0', background: '#EEF2F8' }
 
-function MockPagePreview() {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: 8, background: '#F8FAFC', borderRadius: 4 }}>
-      <div style={{ height: 32, background: '#0D4A80', borderRadius: 3, opacity: 0.85 }} />
-      <div style={{ height: 8, background: '#CBD5E1', borderRadius: 2 }} />
-      <div style={{ height: 8, background: '#CBD5E1', borderRadius: 2, width: '70%' }} />
-      <div style={{ height: 18, background: '#DBEAFE', borderRadius: 2, marginTop: 4 }} />
-      <div style={{ height: 8, background: '#CBD5E1', borderRadius: 2 }} />
-      <div style={{ height: 8, background: '#CBD5E1', borderRadius: 2, width: '80%' }} />
-      <div style={{ height: 14, background: '#0D4A80', borderRadius: 3, marginTop: 4, opacity: 0.65 }} />
-    </div>
-  )
-}
 
 function VariantsTab({ lpId }) {
-  const navigate = useNavigate()
   const showToast = useToast()
-  const [split, setSplit] = useState(60)
-  const [slotA, setSlotA] = useState('ah3kl@v2')
-  const [slotB, setSlotB] = useState('bx9mq@v1')
-  const [dragOverA, setDragOverA] = useState(false)
-  const [dragOverB, setDragOverB] = useState(false)
-
-  const getVariantTitle = (id) => {
-    if (!id) return null
-    const varId = id.split('@')[0]
-    const v = mockVariants.find(x => x.id === varId)
-    return v ? v.title : id
-  }
-
-  const handleDrop = (slot, e) => {
-    e.preventDefault()
-    const id = e.dataTransfer.getData('variantId')
-    if (slot === 'A') { setSlotA(id); setDragOverA(false) }
-    else { setSlotB(id); setDragOverB(false) }
-  }
-
-  const slotStyle = (highlight) => ({
-    flex: 1, minWidth: 0,
-    border: `2px ${highlight ? 'solid' : 'dashed'} ${highlight ? '#0D4A80' : '#CBD5E1'}`,
-    borderRadius: 8, padding: 16,
-    background: highlight ? '#EEF5FF' : '#F8FAFC',
-    transition: 'border-color 0.15s, background 0.15s',
-  })
 
   return (
     <div>
-      {/* Live config card */}
-      <div style={{ ...card }}>
-        <div style={{ ...cardHeader }}>
-          <span>Live Variant Configuration</span>
-          <button id="publish-btn"
-            style={{ padding: '7px 18px', background: '#0D4A80', color: '#FFF', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', letterSpacing: '0.2px' }}
-            onMouseEnter={e => e.currentTarget.style.background = '#0A3D6B'}
-            onMouseLeave={e => e.currentTarget.style.background = '#0D4A80'}
-            onClick={() => showToast('Published successfully')}>
-            Publish
-          </button>
-        </div>
-
-        <div style={{ padding: 20 }}>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'stretch', marginBottom: 14 }}>
-            {/* Slot A */}
-            <div style={slotStyle(dragOverA)}
-              onDragOver={e => { e.preventDefault(); setDragOverA(true) }}
-              onDragLeave={() => setDragOverA(false)}
-              onDrop={e => handleDrop('A', e)}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#0D4A80', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Position A</span>
-                <span style={{ fontSize: 20, fontWeight: 700, color: '#0F172A' }}>{split}%</span>
-              </div>
-              <div style={{ fontSize: 12, color: '#64748B', marginBottom: 10, minHeight: 18 }}>
-                {slotA ? getVariantTitle(slotA) : <em style={{ color: '#94A3B8' }}>Drop variant here</em>}
-              </div>
-              <MockPagePreview />
-              {slotA && (
-                <button onClick={() => setSlotA(null)}
-                  style={{ marginTop: 10, width: '100%', padding: '5px', background: 'transparent', border: '1px solid #E2E8F0', borderRadius: 5, fontSize: 11, color: '#64748B', cursor: 'pointer' }}>
-                  Remove
-                </button>
-              )}
-            </div>
-
-            {/* Slider */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, flexShrink: 0, padding: '0 4px' }}>
-              <span style={{ fontSize: 9, color: '#94A3B8', textAlign: 'center', letterSpacing: '0.3px', textTransform: 'uppercase' }}>Split</span>
-              <input id="split-slider" type="range" min={0} max={100} step={5} value={split}
-                onChange={e => setSplit(Number(e.target.value))}
-                style={{ writingMode: 'vertical-lr', direction: 'rtl', width: 6, height: 90, cursor: 'pointer', accentColor: '#0D4A80' }}
-              />
-              <span style={{ fontSize: 9, color: '#94A3B8' }}>{100 - split}%</span>
-            </div>
-
-            {/* Slot B */}
-            <div style={slotStyle(dragOverB)}
-              onDragOver={e => { e.preventDefault(); setDragOverB(true) }}
-              onDragLeave={() => setDragOverB(false)}
-              onDrop={e => handleDrop('B', e)}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#0D4A80', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Position B</span>
-                <span style={{ fontSize: 20, fontWeight: 700, color: '#0F172A' }}>{100 - split}%</span>
-              </div>
-              <div style={{ fontSize: 12, color: '#64748B', marginBottom: 10, minHeight: 18 }}>
-                {slotB ? getVariantTitle(slotB) : <em style={{ color: '#94A3B8' }}>Drop variant here</em>}
-              </div>
-              <MockPagePreview />
-              {slotB && (
-                <button onClick={() => setSlotB(null)}
-                  style={{ marginTop: 10, width: '100%', padding: '5px', background: 'transparent', border: '1px solid #E2E8F0', borderRadius: 5, fontSize: 11, color: '#64748B', cursor: 'pointer' }}>
-                  Remove
-                </button>
-              )}
-            </div>
-          </div>
-          <div style={{ fontSize: 11, color: '#94A3B8', textAlign: 'center' }}>
-            Drag a variant from the table below into Position A or B
-          </div>
-        </div>
-      </div>
-
-      {/* Variant Table */}
-      <div style={{ ...card }}>
-        <div style={{ ...cardHeader }}>Variants</div>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              {['', 'Variant Title', 'Description', 'Total LP2L', 'Actions'].map((h, i) => (
-                <th key={i} style={thStyle}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {mockVariants.map((v, i) => (
-              <tr key={v.id} draggable onDragStart={e => e.dataTransfer.setData('variantId', v.id)}
-                style={{ borderTop: '1px solid #F1F5F9', cursor: 'grab' }}
-                onMouseEnter={e => e.currentTarget.style.background = '#F8FBFF'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                <td style={{ padding: '12px 12px 12px 16px', color: '#CBD5E1', fontSize: 16 }}>⠿</td>
-                <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 500, color: '#0F172A' }}>{v.title}</td>
-                <td style={{ padding: '12px 16px', fontSize: 12, color: '#64748B' }}>{v.description}</td>
-                <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#0F172A' }}>{v.lp2l}</td>
-                <td style={{ padding: '12px 16px' }}>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button id={`studio-${v.id}`} onClick={() => navigate(`/landing-pages/${lpId}/studio/${v.id}`)}
-                      style={{ padding: '5px 10px', background: '#0D4A80', color: '#FFF', border: 'none', borderRadius: 5, fontSize: 11, fontWeight: 500, cursor: 'pointer' }}>
-                      Open Studio
-                    </button>
-                    <button id={`clone-${v.id}`} onClick={() => showToast('Variant cloned')}
-                      style={{ padding: '5px 10px', background: '#F8FAFC', color: '#475569', border: '1px solid #E2E8F0', borderRadius: 5, fontSize: 11, cursor: 'pointer' }}>
-                      Clone
-                    </button>
-                    <button id={`archive-${v.id}`} onClick={() => showToast('Variant archived')}
-                      style={{ padding: '5px 10px', background: '#FFF5F5', color: '#DC2626', border: '1px solid #FECACA', borderRadius: 5, fontSize: 11, cursor: 'pointer' }}>
-                      Archive
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <LiveVariantConfig
+        variants={mockVariants}
+        lpId={lpId}
+        onPublish={() => showToast('Published successfully')}
+      />
 
       {/* Publish History */}
-      <div style={{ ...card, marginBottom: 0 }}>
+      <div style={{ ...card, marginBottom: 0, marginTop: 20 }}>
         <div style={{ ...cardHeader }}>Publish History</div>
         {mockPublishes.map((p, i) => (
           <div key={p.ver} style={{ padding: '14px 20px', borderTop: i === 0 ? 'none' : '1px solid #F1F5F9', display: 'flex', alignItems: 'center', gap: 14 }}
