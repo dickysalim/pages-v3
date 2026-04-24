@@ -2,29 +2,7 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useToast } from '../components/Toast'
 import LiveVariantConfig from '../components/LiveVariantConfig'
-
-const mockVariants = [
-  // Inactive — oldest variants
-  { id: 'v001', ver: 1, title: 'Pricing First', description: 'Moving pricing above fold to increase purchase intent and reduce drop-off on first scroll. Hypothesis: visitors who see price early self-qualify faster.', lp2l: '5.2%', content: 'mta', publisher: 'Dicky', pageViews: 3820, conversions: 199 },
-  { id: 'v002', ver: 2, title: 'Social Proof Heavy', description: 'Leading with testimonials and trust signals before introducing the product and price. Builds credibility upfront.', lp2l: '6.1%', content: 'fallback', publisher: 'Dicky', pageViews: 4100, conversions: 250 },
-  { id: 'v003', ver: 3, title: 'Benefit Led', description: 'Opening with key product benefits before price reveal to frame value first. Works best with warm traffic.', lp2l: '7.8%', content: 'mta', publisher: 'Dicky', pageViews: 2980, conversions: 232 },
-  { id: 'v004', ver: 4, title: 'Urgency + Scarcity', description: 'Countdown timer and low-stock messaging above fold. Designed for retargeting audiences already familiar with the product.', lp2l: '9.2%', content: 'fallback', publisher: 'Dicky', pageViews: 5640, conversions: 519 },
-  { id: 'v005', ver: 5, title: 'Video Hero', description: 'Auto-playing muted video loop replacing the static hero image. Strong for cold traffic as it provides product context without requiring reading.', lp2l: '8.4%', content: 'mta', publisher: 'Dicky', pageViews: 3210, conversions: 269 },
-  // Live variants (slotA and slotB initial)
-  { id: 'v006', ver: 6, title: 'Minimalist CTA', description: 'Stripped-down layout focusing attention on a single CTA with minimal distractions. Proven to increase click-through on first scroll.', lp2l: '11.3%', content: 'fallback', publisher: 'Dicky', pageViews: 6720, conversions: 759 },
-  { id: 'v007', ver: 7, title: 'Before & After', description: 'Side-by-side comparison of results before and after using the product. High trust-building format for skeptical audiences.', lp2l: '10.1%', content: 'mta', publisher: 'Dicky', pageViews: 4890, conversions: 494 },
-  // Draft — newest, never published
-  { id: 'v008', ver: 8, title: 'Community Led', description: '', lp2l: '—', content: 'fallback', publisher: 'Dicky', pageViews: 0, conversions: 0 },
-]
-
-const LP_TITLES = {
-  owt32: 'Metafiber Main Sales Letter',
-  bx9m2: 'Metafiber Promo Ramadan',
-  cz7k8: '3Peptide Main Sales Letter',
-  dq4p1: '3Peptide Bundle Offer',
-  ex5r3: 'Metafiber Cold Traffic',
-  fy6s9: '3Peptide Retargeting',
-}
+import { mockVariants, LP_TITLES } from '../data/mock'
 
 // Shared styles
 const card = { background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(15,23,42,0.06)', marginBottom: 20 }

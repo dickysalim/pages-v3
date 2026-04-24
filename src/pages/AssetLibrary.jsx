@@ -1,30 +1,7 @@
 import { useState } from 'react'
 import { useToast } from '../components/Toast'
-
-const mockAssets = [
-  { id: 1, title: 'Metafiber Hero Jan', sku: 'MTA', tags: ['hero', 'january'], url: 'https://picsum.photos/seed/1/400/600' },
-  { id: 2, title: '3Peptide Testimonial', sku: 'M3P', tags: ['testimonial'], url: 'https://picsum.photos/seed/2/400/300' },
-  { id: 3, title: 'Metafiber Product Shot', sku: 'MTA', tags: ['product'], url: 'https://picsum.photos/seed/3/400/500' },
-  { id: 4, title: '3Peptide Bundle', sku: 'M3P', tags: ['bundle', 'promo'], url: 'https://picsum.photos/seed/4/400/400' },
-  { id: 5, title: 'Metafiber Before After', sku: 'MTA', tags: ['testimonial', 'before-after'], url: 'https://picsum.photos/seed/5/400/560' },
-  { id: 6, title: '3Peptide Hero Feb', sku: 'M3P', tags: ['hero', 'february'], url: 'https://picsum.photos/seed/6/400/640' },
-  { id: 7, title: 'Metafiber CTA Banner', sku: 'MTA', tags: ['cta'], url: 'https://picsum.photos/seed/7/400/280' },
-  { id: 8, title: '3Peptide Social Proof', sku: 'M3P', tags: ['social-proof'], url: 'https://picsum.photos/seed/8/400/420' },
-]
-
-const SKU_COLORS = {
-  MTA: { bg: '#DBEAFE', color: '#1D4ED8' },
-  M3P: { bg: '#DCFCE7', color: '#166534' },
-}
-
-function SkuBadge({ sku }) {
-  const s = SKU_COLORS[sku] || { bg: '#F1F5F9', color: '#475569' }
-  return (
-    <span style={{ display: 'inline-block', padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 600, background: s.bg, color: s.color }}>
-      {sku}
-    </span>
-  )
-}
+import SkuBadge from '../components/SkuBadge'
+import { mockAssets } from '../data/mock'
 
 function UploadModal({ onClose, onUpload }) {
   const [title, setTitle] = useState('')

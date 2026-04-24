@@ -35,12 +35,6 @@ export function ToastProvider({ children }) {
           {toast}
         </div>
       )}
-      <style>{`
-        @keyframes toastIn {
-          from { opacity: 0; transform: translateX(-50%) translateY(8px); }
-          to { opacity: 1; transform: translateX(-50%) translateY(0); }
-        }
-      `}</style>
     </ToastContext.Provider>
   )
 }

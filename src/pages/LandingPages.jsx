@@ -1,28 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-
-const mockLPs = [
-  { id: 'owt32', title: 'Metafiber Main Sales Letter', url: '/routing-system-test', sku: 'MTA', lp2l: 8.4, trend: 'up' },
-  { id: 'bx9m2', title: 'Metafiber Promo Ramadan', url: '/metafiber-promo', sku: 'MTA', lp2l: 6.1, trend: 'down' },
-  { id: 'cz7k8', title: '3Peptide Main Sales Letter', url: '/3peptide-main', sku: 'M3P', lp2l: 11.2, trend: 'up' },
-  { id: 'dq4p1', title: '3Peptide Bundle Offer', url: '/3peptide-bundle', sku: 'M3P', lp2l: 9.7, trend: 'up' },
-  { id: 'ex5r3', title: 'Metafiber Cold Traffic', url: '/metafiber-cold', sku: 'MTA', lp2l: 4.3, trend: 'down' },
-  { id: 'fy6s9', title: '3Peptide Retargeting', url: '/3peptide-retarget', sku: 'M3P', lp2l: 14.1, trend: 'up' },
-]
-
-const SKU_COLORS = {
-  MTA: { bg: '#DBEAFE', color: '#1D4ED8' },
-  M3P: { bg: '#DCFCE7', color: '#166534' },
-}
-
-function SkuBadge({ sku }) {
-  const s = SKU_COLORS[sku] || { bg: '#F1F5F9', color: '#475569' }
-  return (
-    <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: s.bg, color: s.color, letterSpacing: '0.2px' }}>
-      {sku}
-    </span>
-  )
-}
+import SkuBadge from '../components/SkuBadge'
+import { mockLPs } from '../data/mock'
 
 function SortIcon({ col, sortCol, sortDir }) {
   if (sortCol !== col) return <span style={{ opacity: 0.3, marginLeft: 4, fontSize: 10 }}>↕</span>
