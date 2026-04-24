@@ -757,8 +757,8 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
       {/* two-column — left panel is fixed to phone width, right panel takes remaining space */}
       <div style={{ display: 'grid', gridTemplateColumns: '482px 1fr', gap: 14, alignItems: 'stretch', minWidth: 960 }}>
 
-        {/* ── LEFT: phone config card — fixed width to match 2 phones ── */}
-        <div style={{ width: 482, background: '#fff', border: isDirty ? '1px solid var(--accent)' : '1px solid #E2E6EC', borderRadius: 10, overflow: 'hidden', boxShadow: isDirty ? '0 0 0 3px rgba(37,99,235,.1)' : '0 1px 3px rgba(15,23,42,.06)', display: 'flex', flexDirection: 'column', transition: 'border-color .2s, box-shadow .2s' }}>
+        {/* ── LEFT: phone config card — fixed width and height ── */}
+        <div style={{ width: 482, height: 640, background: '#fff', border: isDirty ? '1px solid var(--accent)' : '1px solid #E2E6EC', borderRadius: 10, overflow: 'hidden', boxShadow: isDirty ? '0 0 0 3px rgba(37,99,235,.1)' : '0 1px 3px rgba(15,23,42,.06)', display: 'flex', flexDirection: 'column', transition: 'border-color .2s, box-shadow .2s' }}>
           {/* header */}
           <div style={{ padding: '12px 16px', borderBottom: isDirty ? '1px solid #BFDBFE' : '1px solid #E2E6EC', fontSize: 13, fontWeight: 600, color: '#0F172A', background: isDirty ? '#EFF6FF' : '#EEF2F8', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, transition: 'background .2s, border-color .2s' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -810,8 +810,8 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
           </div>
         </div>
 
-        {/* ── RIGHT: variant panel — same height as left, inner scrolls ── */}
-        <div style={{ background: '#fff', border: '1px solid #E2E6EC', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(15,23,42,.06)', display: 'flex', flexDirection: 'column' }}>
+        {/* ── RIGHT: variant panel — same fixed height as left panel, inner scrolls ── */}
+        <div style={{ background: '#fff', border: '1px solid #E2E6EC', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(15,23,42,.06)', display: 'flex', flexDirection: 'column', height: 640 }}>
           {/* panel header */}
           <div style={{ padding: '10px 14px', borderBottom: '1px solid #E2E6EC', background: '#EEF2F8', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
