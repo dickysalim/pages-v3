@@ -232,7 +232,7 @@ function InfoRow({ label, value, bold, mono, green }) {
 }
 
 /* ── VariantPreviewModal ─────────────────────────────────────── */
-function VariantPreviewModal({ variant, publishLog, lpId, onClose, onCreateNew }) {
+function VariantPreviewModal({ variant, publishLog, lpId, onClose, onCreateNew, onArchive }) {
   const scrollRef = useRef(null)
   const imgs = CONTENT[variant.content] || CONTENT.mta
 
@@ -271,7 +271,127 @@ function VariantPreviewModal({ variant, publishLog, lpId, onClose, onCreateNew }
     >
       <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', animation: 'varModalIn .22s cubic-bezier(.22,1,.36,1)' }}>
 
-        {/* ── Phone ── */}
+        {/* ── Info Panel (left) ── dark glass, fixed height = phone */}
+        <div style={{
+          background: 'rgba(10,18,36,0.68)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 14,
+          width: 300, height: 572,
+          display: 'flex', flexDirection: 'column',
+          overflow: 'hidden',
+          boxShadow: '0 24px 64px rgba(0,0,0,.5)',
+          marginTop: 24,
+        }}>
+
+          {/* ── Header: title + close ── */}
+          <div style={{ padding: '16px 18px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: 4 }}>Variant Details</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', lineHeight: 1.3 }}>{variant.title}</div>
+              </div>
+              <button
+                onClick={onClose}
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, cursor: 'pointer', color: 'rgba(255,255,255,0.5)', padding: '4px 5px', lineHeight: 0, flexShrink: 0 }}
+                aria-label="Close"
+              >
+                <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                  <path d="M2 2l10 10M12 2L2 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* ── Body ── */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '14px 18px', gap: 14, minHeight: 0 }}>
+
+            {/* Publisher + Publish Date row */}
+            <div style={{ display: 'flex', gap: 20 }}>
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: 3 }}>Publisher</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.85)' }}>{variant.publisher || 'Dicky'}</div>
+              </div>
+              {publishDate && (
+                <div>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: 3 }}>Published</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.85)' }}>{publishDate}</div>
+                </div>
+              )}
+            </div>
+
+            {/* Stats row: Views | Conversions | LP2L */}
+            <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
+              {[
+                { label: 'Page Views', value: (variant.pageViews ?? 0).toLocaleString() },
+                { label: 'Conv.', value: (variant.conversions ?? 0).toLocaleString() },
+                { label: 'LP2L', value: lp2l, green: lp2l !== '—' },
+              ].map((stat, idx, arr) => (
+                <div key={stat.label} style={{ flex: 1, padding: '10px 0', textAlign: 'center', borderRight: idx < arr.length - 1 ? '1px solid rgba(255,255,255,0.08)' : 'none', background: 'rgba(255,255,255,0.04)' }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: 4 }}>{stat.label}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, fontFamily: 'DM Mono, monospace', color: stat.green ? '#4ADE80' : 'rgba(255,255,255,0.85)' }}>{stat.value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Description — fills remaining height, scrollable */}
+            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: 6 }}>Description</div>
+              <div style={{
+                flex: 1, minHeight: 0, overflowY: 'auto',
+                background: 'rgba(0,0,0,0.2)', borderRadius: 8,
+                border: '1px solid rgba(255,255,255,0.06)',
+                padding: '10px 12px',
+                scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.15) transparent',
+              }}>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', lineHeight: 1.65 }}>
+                  {variant.description || 'No description provided.'}
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* ── Footer: actions ── */}
+          <div style={{ padding: '12px 18px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: 8, flexShrink: 0 }}>
+            <button
+              id={`create-from-${variant.id}`}
+              onClick={onCreateNew}
+              style={{
+                flex: 1, padding: '8px 0', borderRadius: 7, border: 'none',
+                background: 'var(--accent)', color: '#fff',
+                fontSize: 11, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.02em',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                transition: 'opacity .15s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+            >
+              <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M10 4v12M4 10h12" /></svg>
+              Create Variant
+            </button>
+            <button
+              id={`archive-${variant.id}`}
+              onClick={onArchive}
+              style={{
+                flex: 1, padding: '8px 0', borderRadius: 7,
+                border: '1px solid rgba(239,68,68,0.4)',
+                background: 'rgba(239,68,68,0.08)', color: 'rgba(239,68,68,0.8)',
+                fontSize: 11, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.02em',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                transition: 'background .15s, border-color .15s, color .15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.16)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.6)'; e.currentTarget.style.color = '#EF4444' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.4)'; e.currentTarget.style.color = 'rgba(239,68,68,0.8)' }}
+            >
+              <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 17 6" /><path d="M16 6l-1 12H5L4 6" /><path d="M8 6V4h4v2" /></svg>
+              Archive
+            </button>
+          </div>
+        </div>
+
+        {/* ── Phone (right) ── */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)' }}>Preview</div>
           <div style={{
@@ -291,63 +411,6 @@ function VariantPreviewModal({ variant, publishLog, lpId, onClose, onCreateNew }
               </div>
               {imgs.map((src, i) => <img key={i} src={src} alt="" style={{ width: '100%', display: 'block' }} />)}
             </div>
-          </div>
-        </div>
-
-        {/* ── Info Panel ── */}
-        <div style={{
-          background: '#fff', borderRadius: 14,
-          width: 300, maxHeight: 572,
-          display: 'flex', flexDirection: 'column',
-          overflow: 'hidden',
-          boxShadow: '0 24px 64px rgba(0,0,0,.35)',
-        }}>
-          {/* header */}
-          <div style={{ padding: '14px 18px', borderBottom: '1px solid #E2E6EC', background: '#EEF2F8', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#0F172A' }}>Variant Details</span>
-            <button
-              onClick={onClose}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 4, lineHeight: 0, borderRadius: 4 }}
-              aria-label="Close"
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-                <path d="M2 2l10 10M12 2L2 12" />
-              </svg>
-            </button>
-          </div>
-
-          {/* scrollable data */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '18px 18px 4px' }}>
-            <InfoRow label="Title" value={variant.title} bold />
-            {publishDate && <InfoRow label="Publish Date" value={publishDate} />}
-            {variant.description && <InfoRow label="Description" value={variant.description} />}
-            <InfoRow label="Publisher" value={variant.publisher || 'Dicky'} />
-            <InfoRow label="Page Views" value={(variant.pageViews ?? 0).toLocaleString()} mono />
-            <InfoRow label="Conversions" value={(variant.conversions ?? 0).toLocaleString()} mono />
-            <InfoRow label="LP2L" value={lp2l} mono green={lp2l !== '—'} />
-          </div>
-
-          {/* CTA */}
-          <div style={{ padding: '14px 18px', borderTop: '1px solid #E2E6EC', flexShrink: 0 }}>
-            <button
-              id={`create-from-${variant.id}`}
-              onClick={onCreateNew}
-              style={{
-                width: '100%', padding: '9px 0', borderRadius: 8,
-                background: 'var(--accent)', color: '#fff', border: 'none',
-                fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                letterSpacing: '0.01em',
-                transition: 'opacity .15s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
-              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-            >
-              <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-                <path d="M10 4v12M4 10h12" />
-              </svg>
-              Create New Variant from This
-            </button>
           </div>
         </div>
       </div>
@@ -531,6 +594,7 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
           lpId={lpId}
           onClose={() => setPreviewModalVariant(null)}
           onCreateNew={() => { setPreviewModalVariant(null); navigate(`/landing-pages/${lpId}/studio/${previewModalVariant.id}`) }}
+          onArchive={() => { setPreviewModalVariant(null); showToast(`"${previewModalVariant.title}" archived`) }}
         />
       )}
       <MiniPhonePreview variant={previewVariant} anchorRect={previewAnchor} />
