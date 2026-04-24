@@ -221,6 +221,140 @@ const logKey = lpId => `publish_log_${lpId}`
 const loadLog = lpId => { try { return JSON.parse(localStorage.getItem(logKey(lpId)) || '[]') } catch { return [] } }
 const saveLog = (lpId, log) => localStorage.setItem(logKey(lpId), JSON.stringify(log))
 
+/* ── InfoRow ─────────────────────────────────────────────────── */
+function InfoRow({ label, value, bold, mono, green }) {
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#94A3B8', marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 13, fontWeight: bold ? 700 : 400, color: green ? '#2A7D4F' : '#0F172A', fontFamily: mono ? 'DM Mono, monospace' : 'var(--font)', lineHeight: 1.5 }}>{value}</div>
+    </div>
+  )
+}
+
+/* ── VariantPreviewModal ─────────────────────────────────────── */
+function VariantPreviewModal({ variant, publishLog, lpId, onClose, onCreateNew }) {
+  const scrollRef = useRef(null)
+  const imgs = CONTENT[variant.content] || CONTENT.mta
+
+  // lock body scroll
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
+
+  // close on Escape
+  useEffect(() => {
+    const handler = e => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  // find most recent publish entry for this variant
+  const publishEntry = publishLog.find(e => e.slotA?.id === variant.id || e.slotB?.id === variant.id)
+  const publishDate = publishEntry
+    ? new Date(publishEntry.timestamp).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    : null
+  const lp2l = (variant.pageViews ?? 0) > 0
+    ? (((variant.conversions ?? 0) / variant.pageViews) * 100).toFixed(1) + '%'
+    : '—'
+
+  return (
+    <div
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9800,
+        background: 'rgba(15,23,42,0.72)',
+        backdropFilter: 'blur(6px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 32,
+      }}
+    >
+      <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', animation: 'varModalIn .22s cubic-bezier(.22,1,.36,1)' }}>
+
+        {/* ── Phone ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)' }}>Preview</div>
+          <div style={{
+            width: 280, height: 572, borderRadius: 38,
+            border: '2.5px solid #333',
+            background: '#fff', overflow: 'hidden',
+            boxShadow: '0 32px 80px rgba(0,0,0,.7)',
+            position: 'relative',
+          }}>
+            {/* notch */}
+            <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 80, height: 24, background: '#222', borderRadius: '0 0 14px 14px', zIndex: 10 }} />
+            {/* scrollable content */}
+            <div ref={scrollRef} style={{ position: 'absolute', inset: 0, overflowY: 'auto', overflowX: 'hidden', scrollbarWidth: 'none' }}>
+              <style>{`@keyframes varModalIn{from{opacity:0;transform:scale(.94) translateY(12px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style>
+              <div style={{ background: '#683b11', height: 56, display: 'flex', alignItems: 'center', padding: '0 16px' }}>
+                <img src={LOGO} alt="logo" style={{ height: 28, objectFit: 'contain' }} />
+              </div>
+              {imgs.map((src, i) => <img key={i} src={src} alt="" style={{ width: '100%', display: 'block' }} />)}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Info Panel ── */}
+        <div style={{
+          background: '#fff', borderRadius: 14,
+          width: 300, maxHeight: 572,
+          display: 'flex', flexDirection: 'column',
+          overflow: 'hidden',
+          boxShadow: '0 24px 64px rgba(0,0,0,.35)',
+        }}>
+          {/* header */}
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid #E2E6EC', background: '#EEF2F8', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#0F172A' }}>Variant Details</span>
+            <button
+              onClick={onClose}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 4, lineHeight: 0, borderRadius: 4 }}
+              aria-label="Close"
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <path d="M2 2l10 10M12 2L2 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* scrollable data */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '18px 18px 4px' }}>
+            <InfoRow label="Title" value={variant.title} bold />
+            {publishDate && <InfoRow label="Publish Date" value={publishDate} />}
+            {variant.description && <InfoRow label="Description" value={variant.description} />}
+            <InfoRow label="Publisher" value={variant.publisher || 'Dicky'} />
+            <InfoRow label="Page Views" value={(variant.pageViews ?? 0).toLocaleString()} mono />
+            <InfoRow label="Conversions" value={(variant.conversions ?? 0).toLocaleString()} mono />
+            <InfoRow label="LP2L" value={lp2l} mono green={lp2l !== '—'} />
+          </div>
+
+          {/* CTA */}
+          <div style={{ padding: '14px 18px', borderTop: '1px solid #E2E6EC', flexShrink: 0 }}>
+            <button
+              id={`create-from-${variant.id}`}
+              onClick={onCreateNew}
+              style={{
+                width: '100%', padding: '9px 0', borderRadius: 8,
+                background: 'var(--accent)', color: '#fff', border: 'none',
+                fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                letterSpacing: '0.01em',
+                transition: 'opacity .15s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+            >
+              <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <path d="M10 4v12M4 10h12" />
+              </svg>
+              Create New Variant from This
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ── PublishModal ────────────────────────────────────────────── */
 const NAME_LIMIT = 40
 
@@ -333,6 +467,8 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
   const [publishLog, setPublishLog] = useState(() => loadLog(lpId))
   const existingNames = publishLog.map(e => e.name.toLowerCase())
 
+  const [previewModalVariant, setPreviewModalVariant] = useState(null)
+
   // snapshot of last-published state for dirty detection
   const publishedRef = useRef({ split: 60, slotAId: variants[0]?.id ?? null, slotBId: null })
   const isDirty = (
@@ -388,6 +524,15 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
   return (
     <>
       {showModal && <PublishModal onConfirm={confirmPublish} onCancel={() => setShowModal(false)} existingNames={existingNames} />}
+      {previewModalVariant && (
+        <VariantPreviewModal
+          variant={previewModalVariant}
+          publishLog={publishLog}
+          lpId={lpId}
+          onClose={() => setPreviewModalVariant(null)}
+          onCreateNew={() => { setPreviewModalVariant(null); navigate(`/landing-pages/${lpId}/studio/${previewModalVariant.id}`) }}
+        />
+      )}
       <MiniPhonePreview variant={previewVariant} anchorRect={previewAnchor} />
 
       {/* two-column — left panel is fixed to phone width, right panel takes remaining space */}
@@ -557,9 +702,24 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
                         {String(v.ver ?? i + 1).padStart(3, '0')}
                       </td>
 
-                      {/* Variant: title + description */}
+                      {/* Variant: title (clickable → preview modal) + description */}
                       <td style={{ padding: '10px 10px' }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: '#0F172A', marginBottom: 3 }}>{v.title}</div>
+                        <div
+                          onClick={e => { e.stopPropagation(); setPreviewModalVariant(v) }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.color = 'var(--accent)'
+                            e.currentTarget.style.textDecoration = 'underline'
+                            e.currentTarget.style.textUnderlineOffset = '3px'
+                            e.currentTarget.style.textDecorationThickness = '1.5px'
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.color = '#0F172A'
+                            e.currentTarget.style.textDecoration = 'none'
+                          }}
+                          style={{ fontSize: 12, fontWeight: 600, color: '#0F172A', marginBottom: 3, cursor: 'pointer', display: 'inline-block', transition: 'color .12s' }}
+                        >
+                          {v.title}
+                        </div>
                         {v.description && (
                           <>
                             <div style={{
