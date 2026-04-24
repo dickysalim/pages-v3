@@ -815,13 +815,13 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
               onClick={() => { setNewVariantBase(null); setShowNewVariantModal(true) }}
               style={{
                 display: 'flex', alignItems: 'center', gap: 5,
-                padding: '5px 10px', borderRadius: 6, border: '1px solid var(--accent)',
-                background: 'transparent', color: 'var(--accent)',
+                padding: '5px 10px', borderRadius: 6, border: 'none',
+                background: 'var(--accent)', color: '#fff',
                 fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                transition: 'background .12s, color .12s',
+                transition: 'opacity .12s',
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#fff' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--accent)' }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
             >
               <svg width="10" height="10" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M10 4v12M4 10h12" /></svg>
               Create New Variant
