@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from './Toast'
 
@@ -27,6 +27,12 @@ const LOGO = 'https://mganik-assets.pages.dev/img/mh5ow3xakq4lpfmge8dk.webp'
 function PhoneFrame({ slot, assignedVariant, dragOver, onDragOver, onDragLeave, onDrop, onClear, onOpenStudio }) {
   const filled = !!assignedVariant
   const imgs = filled ? (CONTENT[assignedVariant.content] || CONTENT.mta) : []
+  const scrollRef = useRef(null)
+
+  // reset scroll to top whenever a new variant is assigned
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 0
+  }, [assignedVariant?.id])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: 180 }}>
@@ -55,7 +61,7 @@ function PhoneFrame({ slot, assignedVariant, dragOver, onDragOver, onDragLeave, 
         <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 56, height: 18, background: filled ? '#222' : '#C8D0DC', borderRadius: '0 0 10px 10px', zIndex: 10 }} />
 
         {filled ? (
-          <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', overflowX: 'hidden', scrollbarWidth: 'none', paddingTop: 18 }}>
+          <div ref={scrollRef} style={{ position: 'absolute', inset: 0, overflowY: 'auto', overflowX: 'hidden', scrollbarWidth: 'none', paddingTop: 18 }}>
             <div style={{ background: '#683b11', height: 42, display: 'flex', alignItems: 'center', padding: '0 10px' }}>
               <img src={LOGO} alt="logo" style={{ height: 22, objectFit: 'contain' }} />
             </div>
@@ -77,51 +83,76 @@ function PhoneFrame({ slot, assignedVariant, dragOver, onDragOver, onDragLeave, 
         {filled ? assignedVariant.title : 'No variant assigned'}
       </div>
 
-      {/* footer */}
-      <div style={{ display: 'flex', gap: 6, width: 180, opacity: filled ? 1 : 0.35, pointerEvents: filled ? 'auto' : 'none' }}>
-        <button onClick={() => onOpenStudio?.(assignedVariant?.id)} style={btnStyle('primary')}>Open Studio</button>
-        <button onClick={onClear} style={btnStyle('ghost')}>Remove</button>
-      </div>
+      {/* footer: only Remove, visible when filled */}
+      {filled && (
+        <button onClick={onClear} style={{ ...btnStyle('ghost'), width: 180 }}>Remove</button>
+      )}
     </div>
   )
 }
 
 /* ── HorizontalSplitSlider ──────────────────────────────────── */
+const inputNumStyle = {
+  width: 44, padding: '2px 4px', fontSize: 13, fontWeight: 700,
+  fontFamily: 'DM Mono, monospace', color: '#1A1916',
+  border: '1px solid #C8D0DC', borderRadius: 5, background: '#F8FAFC',
+  textAlign: 'center', outline: 'none', appearance: 'textfield',
+}
+
 function HorizontalSplitSlider({ split, onChange }) {
+  const handleA = e => {
+    const val = Math.min(100, Math.max(0, Number(e.target.value)))
+    if (!isNaN(val)) onChange(val)
+  }
+  const handleB = e => {
+    const val = Math.min(100, Math.max(0, Number(e.target.value)))
+    if (!isNaN(val)) onChange(100 - val)
+  }
+
   return (
     <div style={{ marginTop: 16 }}>
-      {/* labels row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      {/* slider row with inline percentage inputs at edges */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {/* A label + editable number */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
           <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--accent)' }}>A</span>
-          <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'DM Mono, monospace', color: '#1A1916' }}>{split}%</span>
+          <input
+            id="split-input-a"
+            type="number" min={0} max={100} step={1}
+            value={split}
+            onChange={handleA}
+            style={inputNumStyle}
+          />
+          <span style={{ fontSize: 11, color: '#94A3B8' }}>%</span>
         </div>
-        <span style={{ fontSize: 10, color: '#94A3B8' }}>← drag to split traffic →</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'DM Mono, monospace', color: '#1A1916' }}>{100 - split}%</span>
+
+        {/* track */}
+        <div style={{ flex: 1, position: 'relative', height: 28, display: 'flex', alignItems: 'center' }}>
+          <div style={{ position: 'absolute', left: 0, right: 0, height: 6, borderRadius: 3, background: '#E2E6EC' }} />
+          <div style={{ position: 'absolute', left: 0, height: 6, borderRadius: '3px 0 0 3px', background: 'var(--accent)', width: `${split}%` }} />
+          <div style={{ position: 'absolute', right: 0, height: 6, borderRadius: '0 3px 3px 0', background: '#CBD5E1', width: `${100 - split}%` }} />
+          <div style={{ position: 'absolute', left: `calc(${split}% - 1px)`, height: 6, width: 2, background: '#fff', zIndex: 3 }} />
+          <input
+            id="split-slider"
+            type="range" min={0} max={100} step={1} value={split}
+            onChange={e => onChange(Number(e.target.value))}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'ew-resize', zIndex: 4, margin: 0 }}
+          />
+          <div style={{ position: 'absolute', left: `calc(${split}% - 11px)`, width: 22, height: 22, borderRadius: '50%', background: '#fff', border: '2.5px solid var(--accent)', boxShadow: '0 1px 6px rgba(24,95,165,.25)', zIndex: 3, pointerEvents: 'none' }} />
+        </div>
+
+        {/* B editable number + label */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+          <span style={{ fontSize: 11, color: '#94A3B8' }}>%</span>
+          <input
+            id="split-input-b"
+            type="number" min={0} max={100} step={1}
+            value={100 - split}
+            onChange={handleB}
+            style={inputNumStyle}
+          />
           <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--accent)' }}>B</span>
         </div>
-      </div>
-
-      {/* custom track */}
-      <div style={{ position: 'relative', height: 28, display: 'flex', alignItems: 'center' }}>
-        {/* background track */}
-        <div style={{ position: 'absolute', left: 0, right: 0, height: 6, borderRadius: 3, background: '#E2E6EC' }} />
-        {/* A fill */}
-        <div style={{ position: 'absolute', left: 0, height: 6, borderRadius: '3px 0 0 3px', background: 'var(--accent)', width: `${split}%`, transition: 'width .06s' }} />
-        {/* B fill */}
-        <div style={{ position: 'absolute', right: 0, height: 6, borderRadius: '0 3px 3px 0', background: '#CBD5E1', width: `${100 - split}%`, transition: 'width .06s' }} />
-        {/* thumb label at split point */}
-        <div style={{ position: 'absolute', left: `calc(${split}% - 1px)`, height: 6, width: 2, background: '#fff', zIndex: 3 }} />
-        {/* native range on top */}
-        <input
-          id="split-slider"
-          type="range" min={0} max={100} step={5} value={split}
-          onChange={e => onChange(Number(e.target.value))}
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'ew-resize', zIndex: 4, margin: 0 }}
-        />
-        {/* visible thumb */}
-        <div style={{ position: 'absolute', left: `calc(${split}% - 11px)`, width: 22, height: 22, borderRadius: '50%', background: '#fff', border: '2.5px solid var(--accent)', boxShadow: '0 1px 6px rgba(24,95,165,.25)', zIndex: 3, pointerEvents: 'none', transition: 'left .06s' }} />
       </div>
 
       {/* A / B color legend */}
@@ -243,11 +274,7 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
             {/* horizontal split slider — below both phones */}
             <HorizontalSplitSlider split={split} onChange={setSplit} />
 
-            {/* drag hint */}
-            <div style={{ marginTop: 12, textAlign: 'center', fontSize: 11, color: '#94A3B8', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
-              <svg width="13" height="13" viewBox="0 0 20 20" fill="currentColor" style={{ opacity: .45 }}><path d="M7 4a1 1 0 000 2h6a1 1 0 000-2H7zM5 9a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1zM7 14a1 1 0 000 2h6a1 1 0 000-2H7z" /></svg>
-              Drag a variant from the right panel into Position A or B
-            </div>
+
           </div>
         </div>
 
