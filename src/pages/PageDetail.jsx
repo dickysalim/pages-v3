@@ -4,9 +4,9 @@ import { useToast } from '../components/Toast'
 import LiveVariantConfig from '../components/LiveVariantConfig'
 
 const mockVariants = [
-  { id: 'ah3kl', title: 'Pricing First', description: 'Moving pricing above fold to increase intent', lp2l: '8.4%', content: 'mta' },
-  { id: 'bx9mq', title: 'Social Proof Heavy', description: 'Leading with testimonials before product details', lp2l: '6.1%', content: 'fallback' },
-  { id: 'cx3df', title: 'Benefit Led', description: 'Opening with key product benefits before price', lp2l: '—', content: 'mta' },
+  { id: 'ah3kl', ver: 1, title: 'Pricing First', description: 'Moving pricing above fold to increase intent signals and reduce drop-off on first scroll.', lp2l: '8.4%', content: 'mta', publisher: 'Dicky', pageViews: 1240, conversions: 104 },
+  { id: 'bx9mq', ver: 2, title: 'Social Proof Heavy', description: 'Leading with testimonials and trust signals before introducing the product and price.', lp2l: '6.1%', content: 'fallback', publisher: 'Dicky', pageViews: 980, conversions: 60 },
+  { id: 'cx3df', ver: 3, title: 'Benefit Led', description: 'Opening with key product benefits before price reveal to frame value first.', lp2l: '—', content: 'mta', publisher: 'Dicky', pageViews: 0, conversions: 0 },
 ]
 
 const LP_TITLES = {

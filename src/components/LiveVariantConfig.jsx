@@ -329,6 +329,7 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
   const [previewAnchor, setPreviewAnchor] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [expandedLogId, setExpandedLogId] = useState(null)
+  const [expandedVariantId, setExpandedVariantId] = useState(null)
   const [publishLog, setPublishLog] = useState(() => loadLog(lpId))
   const existingNames = publishLog.map(e => e.name.toLowerCase())
 
@@ -341,6 +342,12 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
   )
 
   const assignedIds = [slotA?.id, slotB?.id].filter(Boolean)
+
+  // variants that were live on last publish but have since been removed from their slot
+  const pendingRemovalIds = [
+    publishedRef.current.slotAId && (slotA?.id ?? null) !== publishedRef.current.slotAId ? publishedRef.current.slotAId : null,
+    publishedRef.current.slotBId && (slotB?.id ?? null) !== publishedRef.current.slotBId ? publishedRef.current.slotBId : null,
+  ].filter(Boolean)
 
   const handleDrop = (slot, e) => {
     e.preventDefault()
@@ -441,76 +448,174 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
 
         {/* ── RIGHT: variant panel — same height as left, inner scrolls ── */}
         <div style={{ background: '#fff', border: '1px solid #E2E6EC', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(15,23,42,.06)', display: 'flex', flexDirection: 'column' }}>
-          {/* fixed header */}
+          {/* panel header */}
           <div style={{ padding: '12px 14px', borderBottom: '1px solid #E2E6EC', fontSize: 13, fontWeight: 600, color: '#0F172A', background: '#EEF2F8', flexShrink: 0 }}>
             Variants
             <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 500, color: '#6B7280' }}>hover to preview · drag to place</span>
           </div>
 
-          {/* fixed column headers */}
-          <div style={{ display: 'grid', gridTemplateColumns: '16px 1fr 52px 90px', padding: '6px 12px', background: '#F8FAFC', borderBottom: '1px solid #E2E6EC', flexShrink: 0 }}>
-            {['', 'Variant', 'LP2L', ''].map((h, i) => (
-              <div key={i} style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#94A3B8' }}>{h}</div>
-            ))}
-          </div>
-
-          {/* scrollable list fills remaining height */}
+          {/* single table: sticky thead + scrollable tbody */}
           <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-            {variants.map((v, i) => {
-              const inSlot = assignedIds.includes(v.id)
-              return (
-                <div
-                  key={v.id}
-                  id={`row-${v.id}`}
-                  draggable={!inSlot}
-                  onDragStart={e => {
-                    draggingRef.current = { ...v }
-                    e.dataTransfer.effectAllowed = 'move'
-                    setPreviewVariant(null)
-                  }}
-                  onDragEnd={() => { draggingRef.current = null }}
-                  onMouseEnter={e => {
-                    if (inSlot) return
-                    e.currentTarget.style.background = '#E6F1FB'
-                    setPreviewVariant(v)
-                    setPreviewAnchor(e.currentTarget.getBoundingClientRect())
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#FAFAFA'
-                    setPreviewVariant(null)
-                    setPreviewAnchor(null)
-                  }}
-                  style={{
-                    display: 'grid', gridTemplateColumns: '16px 1fr 52px 90px',
-                    padding: '11px 12px',
-                    borderTop: i === 0 ? 'none' : '1px solid #F1F5F9',
-                    background: i % 2 === 0 ? '#fff' : '#FAFAFA',
-                    cursor: inSlot ? 'default' : 'grab',
-                    opacity: inSlot ? 0.4 : 1,
-                    pointerEvents: inSlot ? 'none' : 'auto',
-                    alignItems: 'center',
-                    transition: 'background .1s',
-                  }}
-                >
-                  <div style={{ color: '#C8D0DC' }}>
-                    <svg width="12" height="12" viewBox="0 0 14 14" fill="currentColor">
-                      <circle cx="4.5" cy="3.5" r="1" /><circle cx="9.5" cy="3.5" r="1" />
-                      <circle cx="4.5" cy="7" r="1" /><circle cx="9.5" cy="7" r="1" />
-                      <circle cx="4.5" cy="10.5" r="1" /><circle cx="9.5" cy="10.5" r="1" />
-                    </svg>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#1A1916', marginBottom: 2 }}>{v.title}</div>
-                    <div style={{ fontSize: 11, color: '#6B7280', lineHeight: 1.3 }}>{v.description}</div>
-                  </div>
-                  <div style={{ fontSize: 12, fontWeight: 700, fontFamily: 'DM Mono, monospace', color: v.lp2l !== '—' ? '#2A7D4F' : '#C8D0DC' }}>{v.lp2l}</div>
-                  <div style={{ display: 'flex', gap: 3 }}>
-                    <button id={`studio-${v.id}`} onClick={e => { e.stopPropagation(); navigate(`/landing-pages/${lpId}/studio/${v.id}`) }} style={pillStyle(true)}>Studio</button>
-                    <button id={`clone-${v.id}`} onClick={e => { e.stopPropagation(); showToast('Variant cloned') }} style={pillStyle(false)}>Clone</button>
-                  </div>
-                </div>
-              )
-            })}
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: 28 }} />
+                <col style={{ width: 44 }} />
+                <col style={{ width: 'auto' }} />
+                <col style={{ width: 72 }} />
+                <col style={{ width: 82 }} />
+                <col style={{ width: 82 }} />
+                <col style={{ width: 58 }} />
+                <col style={{ width: 108 }} />
+              </colgroup>
+              <thead>
+                <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E6EC' }}>
+                  {['', 'Ver', 'Variant', 'Publisher', 'Views', 'Conv.', 'LP2L', 'Status'].map(h => (
+                    <th key={h} style={{ padding: '7px 10px', textAlign: 'left', fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#94A3B8', position: 'sticky', top: 0, background: '#F8FAFC', zIndex: 1, whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[...variants].sort((a, b) => (b.ver ?? 0) - (a.ver ?? 0)).map((v, i) => {
+                  const isSlotA = slotA?.id === v.id
+                  const isSlotB = slotB?.id === v.id
+                  const inSlot = isSlotA || isSlotB
+                  const isDraft = !inSlot && (v.pageViews ?? 0) === 0
+                  const isPendingRemoval = pendingRemovalIds.includes(v.id)
+                  const canDrag = !inSlot && !isDraft
+
+                  const statusLabel = isSlotA ? 'Position A' : isSlotB ? 'Position B' : isDraft ? 'Draft' : 'Inactive'
+                  const statusStyle = isSlotA
+                    ? { color: 'var(--accent)', background: '#EBF4FF', border: '1px solid #BFDBFE' }
+                    : isSlotB
+                    ? { color: '#475569', background: '#F1F5F9', border: '1px solid #CBD5E1' }
+                    : isDraft
+                    ? { color: '#92400E', background: '#FEF3C7', border: '1px solid #FDE68A' }
+                    : { color: '#6B7280', background: '#F3F4F6', border: '1px solid #E5E7EB' }
+
+                  // Row background: highlight in-slot rows; dim pending-removal rows
+                  const rowBg = isPendingRemoval
+                    ? '#F9FAFB'
+                    : isSlotA ? '#EFF6FF'
+                    : isSlotB ? '#F8FAFC'
+                    : i % 2 === 0 ? '#fff' : '#FAFAFA'
+
+                  const isExpanded = expandedVariantId === v.id
+                  const lp2lColor = v.lp2l !== '—' ? '#2A7D4F' : '#C8D0DC'
+
+                  return (
+                    <tr
+                      key={v.id}
+                      id={`row-${v.id}`}
+                      draggable={canDrag}
+                      onDragStart={e => {
+                        if (!canDrag) return
+                        draggingRef.current = { ...v }
+                        e.dataTransfer.effectAllowed = 'move'
+                        setPreviewVariant(null)
+                      }}
+                      onDragEnd={() => { draggingRef.current = null }}
+                      onMouseEnter={e => {
+                        if (!canDrag) return
+                        e.currentTarget.style.background = '#E6F1FB'
+                        setPreviewVariant(v)
+                        setPreviewAnchor(e.currentTarget.getBoundingClientRect())
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = rowBg
+                        setPreviewVariant(null)
+                        setPreviewAnchor(null)
+                      }}
+                      style={{
+                        borderTop: i === 0 ? 'none' : '1px solid #F1F5F9',
+                        borderLeft: isSlotA ? '3px solid var(--accent)'
+                          : isSlotB ? '3px solid #94A3B8'
+                          : isPendingRemoval ? '3px dashed #D1D5DB'
+                          : '3px solid transparent',
+                        background: rowBg,
+                        opacity: isPendingRemoval ? 0.45 : 1,
+                        cursor: canDrag ? 'grab' : 'default',
+                        transition: 'background .1s, opacity .2s',
+                      }}
+                    >
+                      {/* Drag handle */}
+                      <td style={{ padding: '10px 6px 10px 8px', verticalAlign: 'top', paddingTop: 12 }}>
+                        <div style={{
+                          color: canDrag ? '#94A3B8' : '#D1D5DB',
+                          cursor: canDrag ? 'grab' : 'default',
+                          display: 'flex', alignItems: 'center',
+                        }}>
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+                            <circle cx="4.5" cy="3.5" r="1.2" /><circle cx="9.5" cy="3.5" r="1.2" />
+                            <circle cx="4.5" cy="7" r="1.2" /><circle cx="9.5" cy="7" r="1.2" />
+                            <circle cx="4.5" cy="10.5" r="1.2" /><circle cx="9.5" cy="10.5" r="1.2" />
+                          </svg>
+                        </div>
+                      </td>
+
+                      {/* Ver */}
+                      <td style={{ padding: '10px 8px', fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 11, color: '#0F172A', verticalAlign: 'top', paddingTop: 12 }}>
+                        {String(v.ver ?? i + 1).padStart(3, '0')}
+                      </td>
+
+                      {/* Variant: title + description */}
+                      <td style={{ padding: '10px 10px' }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: '#0F172A', marginBottom: 3 }}>{v.title}</div>
+                        {v.description && (
+                          <>
+                            <div style={{
+                              fontSize: 11, color: '#6B7280', lineHeight: 1.45,
+                              display: '-webkit-box', WebkitLineClamp: isExpanded ? 'unset' : 2,
+                              WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                            }}>
+                              {v.description}
+                            </div>
+                            <button
+                              onClick={e => { e.stopPropagation(); setExpandedVariantId(isExpanded ? null : v.id) }}
+                              style={{ fontSize: 10, color: 'var(--accent)', background: 'none', border: 'none', padding: '2px 0 0', cursor: 'pointer', fontWeight: 600 }}
+                            >
+                              {isExpanded ? 'Show less ↑' : 'Show more ↓'}
+                            </button>
+                          </>
+                        )}
+                      </td>
+
+                      {/* Publisher */}
+                      <td style={{ padding: '10px 8px', fontSize: 11, color: '#374151', fontWeight: 500, verticalAlign: 'top', paddingTop: 12, whiteSpace: 'nowrap' }}>
+                        {v.publisher || 'Dicky'}
+                      </td>
+
+                      {/* Page Views */}
+                      <td style={{ padding: '10px 8px', fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#374151', textAlign: 'right', verticalAlign: 'top', paddingTop: 12 }}>
+                        {(v.pageViews ?? 0).toLocaleString()}
+                      </td>
+
+                      {/* Conversions */}
+                      <td style={{ padding: '10px 8px', fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#374151', textAlign: 'right', verticalAlign: 'top', paddingTop: 12 }}>
+                        {(v.conversions ?? 0).toLocaleString()}
+                      </td>
+
+                      {/* LP2L */}
+                      <td style={{ padding: '10px 8px', fontFamily: 'DM Mono, monospace', fontWeight: 700, fontSize: 11, color: lp2lColor, textAlign: 'right', verticalAlign: 'top', paddingTop: 12 }}>
+                        {v.lp2l}
+                      </td>
+
+                      {/* Status */}
+                      <td style={{ padding: '10px 10px', verticalAlign: 'top', paddingTop: 11 }}>
+                        {isPendingRemoval ? (
+                          <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 20, padding: '2px 9px', whiteSpace: 'nowrap', display: 'inline-block', color: '#9CA3AF', background: '#F3F4F6', border: '1px dashed #D1D5DB' }}>
+                            Removing…
+                          </span>
+                        ) : (
+                          <span style={{ ...statusStyle, fontSize: 10, fontWeight: 700, borderRadius: 20, padding: '2px 9px', whiteSpace: 'nowrap', display: 'inline-block' }}>
+                            {statusLabel}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
 
