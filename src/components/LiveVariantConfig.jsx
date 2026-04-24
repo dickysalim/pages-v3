@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from './Toast'
 
@@ -216,6 +216,63 @@ function MiniPhonePreview({ variant, anchorRect }) {
   )
 }
 
+/* ── localStorage helpers ───────────────────────────────────── */
+const logKey = lpId => `publish_log_${lpId}`
+const loadLog = lpId => { try { return JSON.parse(localStorage.getItem(logKey(lpId)) || '[]') } catch { return [] } }
+const saveLog = (lpId, log) => localStorage.setItem(logKey(lpId), JSON.stringify(log))
+
+/* ── PublishModal ────────────────────────────────────────────── */
+function PublishModal({ onConfirm, onCancel }) {
+  const [name, setName] = useState('')
+  const [desc, setDesc] = useState('')
+  const nameRef = useRef(null)
+  useEffect(() => { nameRef.current?.focus() }, [])
+
+  const inputBase = {
+    width: '100%', padding: '8px 10px', fontSize: 13, fontFamily: 'var(--font)',
+    border: '1px solid #D1D5DB', borderRadius: 7, outline: 'none',
+    background: '#F9FAFB', color: '#0F172A', boxSizing: 'border-box',
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,.45)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      onClick={e => { if (e.target === e.currentTarget) onCancel() }}>
+      <div style={{ background: '#fff', borderRadius: 12, width: 420, boxShadow: '0 8px 32px rgba(0,0,0,.18)', overflow: 'hidden' }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #E2E6EC', background: '#EEF2F8' }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>Publish Configuration</div>
+          <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>Add a name and notes for this publish event</div>
+        </div>
+        <div style={{ padding: '20px' }}>
+          <label style={{ fontSize: 11, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 5 }}>Publish Name <span style={{ color: '#EF4444' }}>*</span></label>
+          <input
+            ref={nameRef}
+            value={name} onChange={e => setName(e.target.value)}
+            placeholder="e.g. Launch A/B Test v2"
+            style={inputBase}
+            onKeyDown={e => { if (e.key === 'Enter' && name.trim()) onConfirm(name.trim(), desc.trim()) }}
+          />
+          <label style={{ fontSize: 11, fontWeight: 600, color: '#374151', display: 'block', marginTop: 14, marginBottom: 5 }}>Description <span style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 400 }}>(optional)</span></label>
+          <textarea
+            value={desc} onChange={e => setDesc(e.target.value)}
+            placeholder="What changed in this publish?"
+            rows={3}
+            style={{ ...inputBase, resize: 'vertical', lineHeight: 1.5 }}
+          />
+        </div>
+        <div style={{ padding: '12px 20px', borderTop: '1px solid #E2E6EC', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button onClick={onCancel} style={{ padding: '7px 16px', fontSize: 12, fontWeight: 600, borderRadius: 6, border: '1px solid #D1D5DB', background: '#fff', color: '#374151', cursor: 'pointer' }}>Cancel</button>
+          <button
+            onClick={() => { if (name.trim()) onConfirm(name.trim(), desc.trim()) }}
+            disabled={!name.trim()}
+            style={{ padding: '7px 16px', fontSize: 12, fontWeight: 600, borderRadius: 6, border: 'none', cursor: name.trim() ? 'pointer' : 'default', background: name.trim() ? 'var(--accent)' : '#E2E6EC', color: name.trim() ? '#fff' : '#94A3B8' }}>
+            Publish
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ── helpers ─────────────────────────────────────────────────── */
 function btnStyle(v) {
   const base = { flex: 1, fontFamily: 'var(--font)', fontSize: 11, padding: '6px 0', borderRadius: 6, cursor: 'pointer', textAlign: 'center', transition: 'all .15s', border: 'none' }
@@ -242,6 +299,16 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
 
   const [previewVariant, setPreviewVariant] = useState(null)
   const [previewAnchor, setPreviewAnchor] = useState(null)
+  const [showModal, setShowModal] = useState(false)
+  const [publishLog, setPublishLog] = useState(() => loadLog(lpId))
+
+  // snapshot of last-published state for dirty detection
+  const publishedRef = useRef({ split: 60, slotAId: variants[0]?.id ?? null, slotBId: null })
+  const isDirty = (
+    split !== publishedRef.current.split ||
+    (slotA?.id ?? null) !== publishedRef.current.slotAId ||
+    (slotB?.id ?? null) !== publishedRef.current.slotBId
+  )
 
   const assignedIds = [slotA?.id, slotB?.id].filter(Boolean)
 
@@ -255,21 +322,57 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
     draggingRef.current = null
   }
 
+  const handlePublish = () => { if (isDirty) setShowModal(true) }
+
+  const confirmPublish = useCallback((name, desc) => {
+    const entry = {
+      id: Date.now(),
+      name,
+      desc,
+      timestamp: new Date().toISOString(),
+      split,
+      slotA: slotA ? { id: slotA.id, title: slotA.title } : null,
+      slotB: slotB ? { id: slotB.id, title: slotB.title } : null,
+    }
+    const newLog = [entry, ...publishLog]
+    setPublishLog(newLog)
+    saveLog(lpId, newLog)
+    publishedRef.current = { split, slotAId: slotA?.id ?? null, slotBId: slotB?.id ?? null }
+    setShowModal(false)
+    onPublish?.()
+    showToast('Published ✓')
+  }, [split, slotA, slotB, publishLog, lpId, onPublish, showToast])
+
   return (
     <>
+      {showModal && <PublishModal onConfirm={confirmPublish} onCancel={() => setShowModal(false)} />}
       <MiniPhonePreview variant={previewVariant} anchorRect={previewAnchor} />
 
       {/* two-column — left panel is fixed to phone width, right panel takes remaining space */}
       <div style={{ display: 'grid', gridTemplateColumns: '482px 1fr', gap: 14, alignItems: 'stretch', minWidth: 960 }}>
 
         {/* ── LEFT: phone config card — fixed width to match 2 phones ── */}
-        <div style={{ width: 482, background: '#fff', border: '1px solid #E2E6EC', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(15,23,42,.06)', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ width: 482, background: '#fff', border: isDirty ? '1px solid var(--accent)' : '1px solid #E2E6EC', borderRadius: 10, overflow: 'hidden', boxShadow: isDirty ? '0 0 0 3px rgba(37,99,235,.1)' : '0 1px 3px rgba(15,23,42,.06)', display: 'flex', flexDirection: 'column', transition: 'border-color .2s, box-shadow .2s' }}>
           {/* header */}
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid #E2E6EC', fontSize: 13, fontWeight: 600, color: '#0F172A', background: '#EEF2F8', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-            <span>Live Variant Configuration</span>
+          <div style={{ padding: '12px 16px', borderBottom: isDirty ? '1px solid #BFDBFE' : '1px solid #E2E6EC', fontSize: 13, fontWeight: 600, color: '#0F172A', background: isDirty ? '#EFF6FF' : '#EEF2F8', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, transition: 'background .2s, border-color .2s' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>Live Variant Configuration</span>
+              {isDirty && (
+                <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--accent)', background: '#DBEAFE', border: '1px solid #BFDBFE', borderRadius: 20, padding: '2px 8px', letterSpacing: '0.04em' }}>
+                  Unsaved changes
+                </span>
+              )}
+            </div>
             <button id="publish-btn"
-              onClick={() => { onPublish?.(); showToast('Publishing…') }}
-              style={{ padding: '6px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+              onClick={handlePublish}
+              disabled={!isDirty}
+              style={{
+                padding: '6px 16px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                cursor: isDirty ? 'pointer' : 'default', border: 'none',
+                background: isDirty ? 'var(--accent)' : '#E2E6EC',
+                color: isDirty ? '#fff' : '#94A3B8',
+                transition: 'background .2s, color .2s',
+              }}>
               Publish
             </button>
           </div>
@@ -377,6 +480,56 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
         </div>
 
       </div>
+
+      {/* ── Publish Log panel ───────────────────────────── */}
+      <div style={{ marginTop: 14, background: '#fff', border: '1px solid #E2E6EC', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(15,23,42,.06)' }}>
+        <div style={{ padding: '10px 16px', borderBottom: '1px solid #E2E6EC', background: '#EEF2F8', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="#6B7280" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="14" height="14" rx="2" /><path d="M7 7h6M7 10h6M7 13h4" />
+          </svg>
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#0F172A' }}>Publish Log</span>
+          <span style={{ fontSize: 10, color: '#94A3B8', marginLeft: 2 }}>{publishLog.length} {publishLog.length === 1 ? 'entry' : 'entries'}</span>
+        </div>
+
+        {publishLog.length === 0 ? (
+          <div style={{ padding: '20px 16px', textAlign: 'center', fontSize: 11, color: '#C8D0DC' }}>No publishes yet</div>
+        ) : (
+          <div style={{ maxHeight: 220, overflowY: 'auto' }}>
+            {publishLog.map((entry, i) => {
+              const d = new Date(entry.timestamp)
+              const dateStr = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+              const timeStr = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+              return (
+                <div key={entry.id} style={{
+                  display: 'grid', gridTemplateColumns: '140px 1fr auto',
+                  padding: '10px 16px', gap: 12, alignItems: 'start',
+                  borderTop: i === 0 ? 'none' : '1px solid #F1F5F9',
+                  background: i % 2 === 0 ? '#fff' : '#FAFAFA',
+                }}>
+                  {/* timestamp */}
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#374151' }}>{dateStr}</div>
+                    <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 1 }}>{timeStr}</div>
+                  </div>
+                  {/* name + desc */}
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#0F172A' }}>{entry.name}</div>
+                    {entry.desc && <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2, lineHeight: 1.4 }}>{entry.desc}</div>}
+                    <div style={{ display: 'flex', gap: 6, marginTop: 5, flexWrap: 'wrap' }}>
+                      {entry.slotA && <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--accent)', background: '#EBF4FF', border: '1px solid #BFDBFE', borderRadius: 20, padding: '1px 7px' }}>A: {entry.slotA.title}</span>}
+                      {entry.slotB && <span style={{ fontSize: 10, fontWeight: 600, color: '#475569', background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: 20, padding: '1px 7px' }}>B: {entry.slotB.title}</span>}
+                      <span style={{ fontSize: 10, color: '#94A3B8', background: '#F8FAFC', border: '1px solid #E2E6EC', borderRadius: 20, padding: '1px 7px', fontFamily: 'DM Mono, monospace' }}>Split {entry.split}/{100 - entry.split}</span>
+                    </div>
+                  </div>
+                  {/* status badge */}
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#059669', background: '#D1FAE5', border: '1px solid #A7F3D0', borderRadius: 20, padding: '2px 8px', whiteSpace: 'nowrap' }}>Published</div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
     </>
   )
 }
