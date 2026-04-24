@@ -232,9 +232,10 @@ function InfoRow({ label, value, bold, mono, green }) {
 }
 
 /* ── VariantPreviewModal ─────────────────────────────────────── */
-function VariantPreviewModal({ variant, publishLog, lpId, onClose, onCreateNew, onArchive }) {
+function VariantPreviewModal({ variant, publishLog, lpId, isDraft, onClose, onCreateNew, onArchive, onOpenStudio, onDeleteDraft, onPublishDraft }) {
   const scrollRef = useRef(null)
   const imgs = CONTENT[variant.content] || CONTENT.mta
+  const [confirmAction, setConfirmAction] = useState(null) // null | 'delete' | 'archive'
 
   // lock body scroll
   useEffect(() => {
@@ -353,41 +354,96 @@ function VariantPreviewModal({ variant, publishLog, lpId, onClose, onCreateNew, 
 
           </div>
 
-          {/* ── Footer: actions ── */}
-          <div style={{ padding: '12px 18px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: 8, flexShrink: 0 }}>
-            <button
-              id={`create-from-${variant.id}`}
-              onClick={onCreateNew}
-              style={{
-                flex: 1, padding: '8px 0', borderRadius: 7, border: 'none',
-                background: 'var(--accent)', color: '#fff',
-                fontSize: 11, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.02em',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                transition: 'opacity .15s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-            >
-              <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M10 4v12M4 10h12" /></svg>
-              Create Variant
-            </button>
-            <button
-              id={`archive-${variant.id}`}
-              onClick={onArchive}
-              style={{
-                flex: 1, padding: '8px 0', borderRadius: 7,
-                border: '1px solid rgba(239,68,68,0.4)',
-                background: 'rgba(239,68,68,0.08)', color: 'rgba(239,68,68,0.8)',
-                fontSize: 11, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.02em',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                transition: 'background .15s, border-color .15s, color .15s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.16)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.6)'; e.currentTarget.style.color = '#EF4444' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.4)'; e.currentTarget.style.color = 'rgba(239,68,68,0.8)' }}
-            >
-              <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 17 6" /><path d="M16 6l-1 12H5L4 6" /><path d="M8 6V4h4v2" /></svg>
-              Archive
-            </button>
+          {/* ── Footer: actions (draft vs. live) ── */}
+          <div style={{ padding: '10px 18px', borderTop: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
+            {confirmAction ? (
+              /* ── Inline confirm ── */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 600, color: '#FCA5A5' }}>
+                  <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3l7 14H3L10 3z" /><path d="M10 9v4" /><circle cx="10" cy="15" r=".5" fill="currentColor" /></svg>
+                  {confirmAction === 'delete' ? 'Delete this draft? This cannot be undone.' : 'Archive this variant? This cannot be undone.'}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => setConfirmAction(null)}
+                    style={{ flex: 1, padding: '7px 0', borderRadius: 7, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => { confirmAction === 'delete' ? onDeleteDraft() : onArchive(); setConfirmAction(null) }}
+                    style={{ flex: 1, padding: '7px 0', borderRadius: 7, border: 'none', background: '#EF4444', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'opacity .15s' }}
+                    onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                    onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                  >
+                    {confirmAction === 'delete' ? 'Yes, Delete' : 'Yes, Archive'}
+                  </button>
+                </div>
+              </div>
+            ) : isDraft ? (
+              /* ── Draft actions: Studio | Publish | Delete ── */
+              <div style={{ display: 'flex', gap: 8 }}>
+                {/* Studio */}
+                <button
+                  id={`studio-${variant.id}`}
+                  onClick={onOpenStudio}
+                  style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'opacity .15s' }}
+                  onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                  onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                >
+                  <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="14" height="14" rx="2" /><path d="M9 9l6-6M15 3v6M9 3h6" /></svg>
+                  Studio
+                </button>
+                {/* Publish */}
+                <button
+                  id={`publish-draft-${variant.id}`}
+                  onClick={onPublishDraft}
+                  style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: 'none', background: '#16A34A', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'opacity .15s' }}
+                  onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                  onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                >
+                  <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5-9 5 9" /><path d="M3 17h14" /></svg>
+                  Publish
+                </button>
+                {/* Delete — rightmost */}
+                <button
+                  id={`delete-draft-${variant.id}`}
+                  onClick={() => setConfirmAction('delete')}
+                  style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: 'rgba(239,68,68,0.8)', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'background .15s, border-color .15s, color .15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.18)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.6)'; e.currentTarget.style.color = '#EF4444' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.4)'; e.currentTarget.style.color = 'rgba(239,68,68,0.8)' }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 17 6" /><path d="M16 6l-1 12H5L4 6" /><path d="M8 6V4h4v2" /></svg>
+                  Delete
+                </button>
+              </div>
+            ) : (
+              /* ── Live variant actions: Create Variant | Archive ── */
+              <div style={{ display: 'flex', gap: 8 }}>
+                {/* Create Variant */}
+                <button
+                  id={`create-from-${variant.id}`}
+                  onClick={onCreateNew}
+                  style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.02em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'opacity .15s' }}
+                  onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                  onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                >
+                  <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M10 4v12M4 10h12" /></svg>
+                  Create Variant
+                </button>
+                {/* Archive — rightmost, requires confirm */}
+                <button
+                  id={`archive-${variant.id}`}
+                  onClick={() => setConfirmAction('archive')}
+                  style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: 'rgba(239,68,68,0.8)', fontSize: 11, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.02em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'background .15s, border-color .15s, color .15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.16)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.6)'; e.currentTarget.style.color = '#EF4444' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.4)'; e.currentTarget.style.color = 'rgba(239,68,68,0.8)' }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 17 6" /><path d="M16 6l-1 12H5L4 6" /><path d="M8 6V4h4v2" /></svg>
+                  Archive
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -510,10 +566,54 @@ function pillStyle(accent) {
   return accent ? { ...base, background: 'var(--accent)', color: '#fff', border: '1px solid var(--accent)' } : base
 }
 
+/* ── NewVariantModal ────────────────────────────────────────── */
+function NewVariantModal({ defaultTitle, fromLabel, onConfirm, onCancel }) {
+  const [title, setTitle] = useState(defaultTitle)
+  const inputRef = useRef(null)
+  useEffect(() => { inputRef.current?.select() }, [])
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,.5)', zIndex: 9100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      onClick={e => { if (e.target === e.currentTarget) onCancel() }}
+    >
+      <div style={{ background: '#fff', borderRadius: 12, width: 400, boxShadow: '0 8px 32px rgba(0,0,0,.2)', overflow: 'hidden', animation: 'varModalIn .18s cubic-bezier(.22,1,.36,1)' }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #E2E6EC', background: '#EEF2F8' }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>New Variant</div>
+          {fromLabel && <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>Branching from “{fromLabel}”</div>}
+        </div>
+        <div style={{ padding: '20px' }}>
+          <label style={{ fontSize: 11, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>Variant Name</label>
+          <input
+            ref={inputRef}
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && title.trim()) onConfirm(title.trim()); if (e.key === 'Escape') onCancel() }}
+            style={{ width: '100%', padding: '9px 11px', fontSize: 13, fontFamily: 'var(--font)', border: '1px solid #D1D5DB', borderRadius: 7, outline: 'none', background: '#F9FAFB', color: '#0F172A', boxSizing: 'border-box' }}
+          />
+          <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 5 }}>Description can be added later when you publish in Studio.</div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+            <button onClick={onCancel} style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: '1px solid #D1D5DB', background: '#fff', fontSize: 12, fontWeight: 600, color: '#374151', cursor: 'pointer' }}>Cancel</button>
+            <button
+              onClick={() => title.trim() && onConfirm(title.trim())}
+              disabled={!title.trim()}
+              style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: 'none', background: title.trim() ? 'var(--accent)' : '#E2E6EC', fontSize: 12, fontWeight: 600, color: title.trim() ? '#fff' : '#9CA3AF', cursor: title.trim() ? 'pointer' : 'default', transition: 'background .15s, color .15s' }}
+            >
+              Create Draft
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ── main export ─────────────────────────────────────────────── */
 export default function LiveVariantConfig({ variants, lpId, onPublish }) {
   const navigate = useNavigate()
   const showToast = useToast()
+
+  const [variantList, setVariantList] = useState(variants)
 
   const [split, setSplit] = useState(60)
   const [slotA, setSlotA] = useState(variants[0] ? { ...variants[0] } : null)
@@ -531,6 +631,29 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
   const existingNames = publishLog.map(e => e.name.toLowerCase())
 
   const [previewModalVariant, setPreviewModalVariant] = useState(null)
+  const [showNewVariantModal, setShowNewVariantModal] = useState(false)
+  const [newVariantBase, setNewVariantBase] = useState(null) // null = scratch | variant obj = from this
+
+  // next version number — max existing ver + 1
+  const nextVer = Math.max(...variantList.map(v => v.ver ?? 0)) + 1
+
+  const handleCreateVariant = (title) => {
+    const newVariant = {
+      id: `draft-${Date.now()}`,
+      ver: nextVer,
+      title,
+      description: '',
+      lp2l: '—',
+      content: newVariantBase?.content ?? 'mta',
+      publisher: 'Dicky',
+      pageViews: 0,
+      conversions: 0,
+    }
+    setVariantList(prev => [...prev, newVariant])
+    setShowNewVariantModal(false)
+    setNewVariantBase(null)
+    showToast(`Draft “${title}” created`)
+  }
 
   // snapshot of last-published state for dirty detection
   const publishedRef = useRef({ split: 60, slotAId: variants[0]?.id ?? null, slotBId: null })
@@ -587,16 +710,40 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
   return (
     <>
       {showModal && <PublishModal onConfirm={confirmPublish} onCancel={() => setShowModal(false)} existingNames={existingNames} />}
-      {previewModalVariant && (
-        <VariantPreviewModal
-          variant={previewModalVariant}
-          publishLog={publishLog}
-          lpId={lpId}
-          onClose={() => setPreviewModalVariant(null)}
-          onCreateNew={() => { setPreviewModalVariant(null); navigate(`/landing-pages/${lpId}/studio/${previewModalVariant.id}`) }}
-          onArchive={() => { setPreviewModalVariant(null); showToast(`"${previewModalVariant.title}" archived`) }}
+      {showNewVariantModal && (
+        <NewVariantModal
+          defaultTitle={newVariantBase ? `Variant #${String(nextVer).padStart(3, '0')} (from ${newVariantBase.title})` : `Variant #${String(nextVer).padStart(3, '0')}`}
+          fromLabel={newVariantBase?.title ?? null}
+          onConfirm={handleCreateVariant}
+          onCancel={() => { setShowNewVariantModal(false); setNewVariantBase(null) }}
         />
       )}
+      {previewModalVariant && (() => {
+        const v = previewModalVariant
+        const isPreviewDraft = !assignedIds.includes(v.id) && (v.pageViews ?? 0) === 0
+        return (
+          <VariantPreviewModal
+            variant={v}
+            publishLog={publishLog}
+            lpId={lpId}
+            isDraft={isPreviewDraft}
+            onClose={() => setPreviewModalVariant(null)}
+            onCreateNew={() => {
+              setPreviewModalVariant(null)
+              setNewVariantBase(v)
+              setShowNewVariantModal(true)
+            }}
+            onArchive={() => { setPreviewModalVariant(null); showToast(`“${v.title}” archived`) }}
+            onOpenStudio={() => { setPreviewModalVariant(null); navigate(`/landing-pages/${lpId}/studio/${v.id}`) }}
+            onDeleteDraft={() => {
+              setVariantList(prev => prev.filter(x => x.id !== v.id))
+              setPreviewModalVariant(null)
+              showToast(`Draft “${v.title}” deleted`)
+            }}
+            onPublishDraft={() => { setPreviewModalVariant(null); handlePublish() }}
+          />
+        )
+      })()}
       <MiniPhonePreview variant={previewVariant} anchorRect={previewAnchor} />
 
       {/* two-column — left panel is fixed to phone width, right panel takes remaining space */}
@@ -658,9 +805,27 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
         {/* ── RIGHT: variant panel — same height as left, inner scrolls ── */}
         <div style={{ background: '#fff', border: '1px solid #E2E6EC', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(15,23,42,.06)', display: 'flex', flexDirection: 'column' }}>
           {/* panel header */}
-          <div style={{ padding: '12px 14px', borderBottom: '1px solid #E2E6EC', fontSize: 13, fontWeight: 600, color: '#0F172A', background: '#EEF2F8', flexShrink: 0 }}>
-            Variants
-            <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 500, color: '#6B7280' }}>hover to preview · drag to place</span>
+          <div style={{ padding: '10px 14px', borderBottom: '1px solid #E2E6EC', background: '#EEF2F8', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#0F172A' }}>Variants</span>
+              <span style={{ fontSize: 10, fontWeight: 500, color: '#6B7280' }}>hover to preview · drag to place</span>
+            </div>
+            <button
+              id="create-new-variant-btn"
+              onClick={() => { setNewVariantBase(null); setShowNewVariantModal(true) }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                padding: '5px 10px', borderRadius: 6, border: '1px solid var(--accent)',
+                background: 'transparent', color: 'var(--accent)',
+                fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                transition: 'background .12s, color .12s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#fff' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--accent)' }}
+            >
+              <svg width="10" height="10" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M10 4v12M4 10h12" /></svg>
+              Create New Variant
+            </button>
           </div>
 
           {/* single table: sticky thead + scrollable tbody */}
@@ -684,7 +849,7 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
                 </tr>
               </thead>
               <tbody>
-                {[...variants].sort((a, b) => (b.ver ?? 0) - (a.ver ?? 0)).map((v, i) => {
+                {[...variantList].sort((a, b) => (b.ver ?? 0) - (a.ver ?? 0)).map((v, i) => {
                   const isSlotA = slotA?.id === v.id
                   const isSlotB = slotB?.id === v.id
                   const inSlot = isSlotA || isSlotB
@@ -701,11 +866,12 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
                     ? { color: '#92400E', background: '#FEF3C7', border: '1px solid #FDE68A' }
                     : { color: '#6B7280', background: '#F3F4F6', border: '1px solid #E5E7EB' }
 
-                  // Row background: highlight in-slot rows; dim pending-removal rows
+                  // Row background: draft=yellow, in-slot=blue/slate, pending-removal=grey
                   const rowBg = isPendingRemoval
                     ? '#F9FAFB'
                     : isSlotA ? '#EFF6FF'
                     : isSlotB ? '#F8FAFC'
+                    : isDraft ? '#FFFDE7'
                     : i % 2 === 0 ? '#fff' : '#FAFAFA'
 
                   const isExpanded = expandedVariantId === v.id
@@ -739,6 +905,7 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
                         borderLeft: isSlotA ? '3px solid var(--accent)'
                           : isSlotB ? '3px solid #94A3B8'
                           : isPendingRemoval ? '3px dashed #D1D5DB'
+                          : isDraft ? '3px solid #F59E0B'
                           : '3px solid transparent',
                         background: rowBg,
                         opacity: isPendingRemoval ? 0.45 : 1,
