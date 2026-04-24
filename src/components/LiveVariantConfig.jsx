@@ -222,6 +222,8 @@ const loadLog = lpId => { try { return JSON.parse(localStorage.getItem(logKey(lp
 const saveLog = (lpId, log) => localStorage.setItem(logKey(lpId), JSON.stringify(log))
 
 /* ── PublishModal ────────────────────────────────────────────── */
+const NAME_LIMIT = 40
+
 function PublishModal({ onConfirm, onCancel, existingNames }) {
   const [name, setName] = useState('')
   const [desc, setDesc] = useState('')
@@ -231,6 +233,8 @@ function PublishModal({ onConfirm, onCancel, existingNames }) {
 
   const isDuplicate = name.trim() && existingNames.includes(name.trim().toLowerCase())
   const canSubmit = name.trim() && !isDuplicate
+  const charsLeft = NAME_LIMIT - name.length
+  const counterColor = charsLeft <= 0 ? '#DC2626' : charsLeft <= 5 ? '#F59E0B' : '#9CA3AF'
 
   const handleSubmit = () => {
     if (!name.trim()) return
@@ -257,16 +261,24 @@ function PublishModal({ onConfirm, onCancel, existingNames }) {
           <input
             ref={nameRef}
             value={name}
+            maxLength={NAME_LIMIT}
             onChange={e => { setName(e.target.value); setNameError('') }}
             placeholder="e.g. Launch A/B Test v2"
-            style={{ ...inputBase, borderColor: isDuplicate ? '#FCA5A5' : '#D1D5DB', background: isDuplicate ? '#FFF5F5' : '#F9FAFB' }}
+            style={{ ...inputBase, borderColor: isDuplicate ? '#FCA5A5' : charsLeft <= 0 ? '#FCA5A5' : '#D1D5DB', background: isDuplicate ? '#FFF5F5' : '#F9FAFB' }}
             onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }}
           />
-          {isDuplicate && (
-            <div style={{ fontSize: 11, color: '#DC2626', marginTop: 5, display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span>⚠</span> This publish name already exists — please use a unique name.
-            </div>
-          )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+            {isDuplicate ? (
+              <span style={{ fontSize: 11, color: '#DC2626', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span>⚠</span> Name already exists — use a unique name.
+              </span>
+            ) : (
+              <span />
+            )}
+            <span style={{ fontSize: 10, fontWeight: 600, color: counterColor, fontFamily: 'DM Mono, monospace', transition: 'color .15s' }}>
+              {name.length}/{NAME_LIMIT}
+            </span>
+          </div>
           <label style={{ fontSize: 11, fontWeight: 600, color: '#374151', display: 'block', marginTop: 14, marginBottom: 5 }}>Description <span style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 400 }}>(optional)</span></label>
           <textarea
             value={desc} onChange={e => setDesc(e.target.value)}
@@ -519,8 +531,19 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
         {publishLog.length === 0 ? (
           <div style={{ padding: '24px 16px', textAlign: 'center', fontSize: 11, color: '#C8D0DC' }}>No publishes yet — click Publish to create the first entry.</div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <div style={{ overflowX: 'auto', maxHeight: 432 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: 56 }} />
+                <col style={{ width: 110 }} />
+                <col style={{ width: 'auto' }} />
+                <col style={{ width: 200 }} />
+                <col style={{ width: 80 }} />
+                <col style={{ width: 90 }} />
+                <col style={{ width: 100 }} />
+                <col style={{ width: 64 }} />
+                <col style={{ width: 100 }} />
+              </colgroup>
               <thead>
                 <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E6EC' }}>
                   {['Ver', 'Date', 'Publish Detail', 'Variant', 'Publisher', 'Page Views', 'Conversions', 'LP2L', ''].map(h => (
@@ -528,9 +551,6 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
                   ))}
                 </tr>
               </thead>
-            </table>
-            <div style={{ maxHeight: 384, overflowY: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <tbody>
                 {publishLog.map((entry, i) => {
                   const d = new Date(entry.timestamp)
@@ -553,7 +573,7 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
                       </td>
 
                       {/* Publish Detail */}
-                      <td style={{ padding: '10px 14px', minWidth: 180 }}>
+                      <td style={{ padding: '10px 14px' }}>
                         <div style={{ fontWeight: 700, color: '#0F172A', marginBottom: entry.desc ? 2 : 0 }}>{entry.name}</div>
                         {entry.desc && (
                           <>
@@ -575,15 +595,15 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
                       </td>
 
                       {/* Variant */}
-                      <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '10px 14px' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                           {entry.slotA && (
-                            <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--accent)', background: '#EBF4FF', border: '1px solid #BFDBFE', borderRadius: 20, padding: '1px 8px', display: 'inline-block' }}>
+                            <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--accent)', background: '#EBF4FF', border: '1px solid #BFDBFE', borderRadius: 20, padding: '1px 8px', display: 'inline-block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
                               A·{entry.split}% {entry.slotA.title}
                             </span>
                           )}
                           {entry.slotB && (
-                            <span style={{ fontSize: 10, fontWeight: 600, color: '#475569', background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: 20, padding: '1px 8px', display: 'inline-block' }}>
+                            <span style={{ fontSize: 10, fontWeight: 600, color: '#475569', background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: 20, padding: '1px 8px', display: 'inline-block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
                               B·{100 - entry.split}% {entry.slotB.title}
                             </span>
                           )}
@@ -625,7 +645,6 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
                 })}
               </tbody>
             </table>
-            </div>
           </div>
         )}
       </div>
