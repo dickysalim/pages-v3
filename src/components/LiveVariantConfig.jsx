@@ -61,7 +61,7 @@ function PhoneFrame({ slot, assignedVariant, dragOver, onDragOver, onDragLeave, 
         <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 56, height: 18, background: filled ? '#222' : '#C8D0DC', borderRadius: '0 0 10px 10px', zIndex: 10 }} />
 
         {filled ? (
-          <div ref={scrollRef} style={{ position: 'absolute', inset: 0, overflowY: 'auto', overflowX: 'hidden', scrollbarWidth: 'none', paddingTop: 18 }}>
+          <div ref={scrollRef} style={{ position: 'absolute', inset: 0, overflowY: 'auto', overflowX: 'hidden', scrollbarWidth: 'none' }}>
             <div style={{ background: '#683b11', height: 42, display: 'flex', alignItems: 'center', padding: '0 10px' }}>
               <img src={LOGO} alt="logo" style={{ height: 22, objectFit: 'contain' }} />
             </div>
@@ -92,11 +92,14 @@ function PhoneFrame({ slot, assignedVariant, dragOver, onDragOver, onDragLeave, 
 }
 
 /* ── HorizontalSplitSlider ──────────────────────────────────── */
+const PRESETS = [[50, 50], [60, 40], [70, 30], [80, 20]]
+
 const inputNumStyle = {
-  width: 44, padding: '2px 4px', fontSize: 13, fontWeight: 700,
+  width: 42, padding: '3px 4px', fontSize: 15, fontWeight: 700,
   fontFamily: 'DM Mono, monospace', color: '#1A1916',
-  border: '1px solid #C8D0DC', borderRadius: 5, background: '#F8FAFC',
-  textAlign: 'center', outline: 'none', appearance: 'textfield',
+  border: 'none', borderBottom: '2px solid #C8D0DC', borderRadius: 0,
+  background: 'transparent', textAlign: 'center', outline: 'none',
+  appearance: 'textfield', lineHeight: 1,
 }
 
 function HorizontalSplitSlider({ split, onChange }) {
@@ -110,62 +113,80 @@ function HorizontalSplitSlider({ split, onChange }) {
   }
 
   return (
-    <div style={{ marginTop: 16 }}>
-      {/* slider row with inline percentage inputs at edges */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        {/* A label + editable number */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--accent)' }}>A</span>
-          <input
-            id="split-input-a"
-            type="number" min={0} max={100} step={1}
-            value={split}
-            onChange={handleA}
-            style={inputNumStyle}
-          />
-          <span style={{ fontSize: 11, color: '#94A3B8' }}>%</span>
-        </div>
+    <div style={{ marginTop: 14 }}>
 
-        {/* track */}
-        <div style={{ flex: 1, position: 'relative', height: 28, display: 'flex', alignItems: 'center' }}>
-          <div style={{ position: 'absolute', left: 0, right: 0, height: 6, borderRadius: 3, background: '#E2E6EC' }} />
-          <div style={{ position: 'absolute', left: 0, height: 6, borderRadius: '3px 0 0 3px', background: 'var(--accent)', width: `${split}%` }} />
-          <div style={{ position: 'absolute', right: 0, height: 6, borderRadius: '0 3px 3px 0', background: '#CBD5E1', width: `${100 - split}%` }} />
-          <div style={{ position: 'absolute', left: `calc(${split}% - 1px)`, height: 6, width: 2, background: '#fff', zIndex: 3 }} />
-          <input
-            id="split-slider"
-            type="range" min={0} max={100} step={1} value={split}
-            onChange={e => onChange(Number(e.target.value))}
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'ew-resize', zIndex: 4, margin: 0 }}
-          />
-          <div style={{ position: 'absolute', left: `calc(${split}% - 11px)`, width: 22, height: 22, borderRadius: '50%', background: '#fff', border: '2.5px solid var(--accent)', boxShadow: '0 1px 6px rgba(24,95,165,.25)', zIndex: 3, pointerEvents: 'none' }} />
-        </div>
+      {/* ── Bar + presets on a compact layout ── */}
 
-        {/* B editable number + label */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-          <span style={{ fontSize: 11, color: '#94A3B8' }}>%</span>
-          <input
-            id="split-input-b"
-            type="number" min={0} max={100} step={1}
-            value={100 - split}
-            onChange={handleB}
-            style={inputNumStyle}
-          />
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--accent)' }}>B</span>
+      {/* section label inline with presets */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#C8D0DC' }}>Traffic Split</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {PRESETS.map(([a, b]) => {
+            const active = split === a
+            return (
+              <button
+                key={a}
+                onClick={() => onChange(a)}
+                style={{
+                  fontSize: 10, fontWeight: 700, fontFamily: 'DM Mono, monospace',
+                  padding: '3px 8px', borderRadius: 20, border: 'none', cursor: 'pointer',
+                  background: active ? 'var(--accent)' : '#F1F5F9',
+                  color: active ? '#fff' : '#94A3B8',
+                  transition: 'background .15s, color .15s',
+                }}
+              >
+                {a}/{b}
+              </button>
+            )
+          })}
         </div>
       </div>
 
-      {/* A / B color legend */}
-      <div style={{ display: 'flex', gap: 12, marginTop: 8, justifyContent: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <div style={{ width: 8, height: 8, borderRadius: 2, background: 'var(--accent)' }} />
-          <span style={{ fontSize: 10, color: '#6B7280' }}>Position A receives more traffic →</span>
+      {/* ── Interactive proportional bar ── */}
+      <div style={{ position: 'relative', height: 28 }}>
+
+        {/* soft-tinted fill bar */}
+        <div style={{ position: 'absolute', inset: 0, borderRadius: 7, overflow: 'hidden', border: '1px solid #E2E6EC', display: 'flex' }}>
+          {/* A side */}
+          <div style={{ flex: split, background: '#BFDBFE', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderRight: '1px solid #93C5FD' }}>
+            {split >= 10 && (
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#1D4ED8', fontFamily: 'DM Mono, monospace', whiteSpace: 'nowrap' }}>
+                A · {split}%
+              </span>
+            )}
+          </div>
+          {/* B side */}
+          <div style={{ flex: 100 - split, background: '#CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+            {(100 - split) >= 10 && (
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', fontFamily: 'DM Mono, monospace', whiteSpace: 'nowrap' }}>
+                {100 - split}% · B
+              </span>
+            )}
+          </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <div style={{ width: 8, height: 8, borderRadius: 2, background: '#CBD5E1' }} />
-          <span style={{ fontSize: 10, color: '#6B7280' }}>← Position B receives more traffic</span>
-        </div>
+
+        {/* invisible range input */}
+        <input
+          id="split-slider"
+          type="range" min={0} max={100} step={1} value={split}
+          onChange={e => onChange(Number(e.target.value))}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'ew-resize', zIndex: 4, margin: 0 }}
+        />
+
+        {/* thumb on the boundary */}
+        <div style={{
+          position: 'absolute',
+          left: `calc(${split}% - 8px)`,
+          top: '50%', transform: 'translateY(-50%)',
+          width: 16, height: 16, borderRadius: '50%',
+          background: '#fff',
+          border: '2px solid var(--accent)',
+          boxShadow: '0 1px 4px rgba(24,95,165,.25)',
+          zIndex: 3, pointerEvents: 'none',
+        }} />
+
       </div>
+
     </div>
   )
 }
@@ -238,11 +259,11 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
     <>
       <MiniPhonePreview variant={previewVariant} anchorRect={previewAnchor} />
 
-      {/* two-column — stretch so both are same height */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, alignItems: 'stretch' }}>
+      {/* two-column — left panel is fixed to phone width, right panel takes remaining space */}
+      <div style={{ display: 'grid', gridTemplateColumns: '482px 1fr', gap: 14, alignItems: 'stretch', minWidth: 960 }}>
 
-        {/* ── LEFT: phone config card ── */}
-        <div style={{ background: '#fff', border: '1px solid #E2E6EC', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(15,23,42,.06)', display: 'flex', flexDirection: 'column' }}>
+        {/* ── LEFT: phone config card — fixed width to match 2 phones ── */}
+        <div style={{ width: 482, background: '#fff', border: '1px solid #E2E6EC', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(15,23,42,.06)', display: 'flex', flexDirection: 'column' }}>
           {/* header */}
           <div style={{ padding: '12px 16px', borderBottom: '1px solid #E2E6EC', fontSize: 13, fontWeight: 600, color: '#0F172A', background: '#EEF2F8', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
             <span>Live Variant Configuration</span>
@@ -253,7 +274,7 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
             </button>
           </div>
 
-          <div style={{ padding: '16px 16px 14px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '16px 45px 14px', flex: 1, display: 'flex', flexDirection: 'column' }}>
             {/* phones side by side */}
             <div style={{ display: 'flex', gap: 32, justifyContent: 'center' }}>
               <PhoneFrame slot="A" assignedVariant={slotA} dragOver={dragOverA}
@@ -271,8 +292,10 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
                 onOpenStudio={id => navigate(`/landing-pages/${lpId}/studio/${id}`)} />
             </div>
 
-            {/* horizontal split slider — below both phones */}
-            <HorizontalSplitSlider split={split} onChange={setSplit} />
+            {/* horizontal split slider — constrained to phone area width */}
+            <div style={{ width: 392, alignSelf: 'center' }}>
+              <HorizontalSplitSlider split={split} onChange={setSplit} />
+            </div>
 
 
           </div>
