@@ -9,12 +9,6 @@ const mockVariants = [
   { id: 'cx3df', title: 'Benefit Led', description: 'Opening with key product benefits before price', lp2l: '—', content: 'mta' },
 ]
 
-const mockPublishes = [
-  { ver: 3, name: 'Pricing above fold test', date: 'Apr 18', by: 'dicky', a: 'ah3kl@v2', b: 'bx9mq@v1', splitA: 60, splitB: 40, live: true },
-  { ver: 2, name: 'Added variant B', date: 'Apr 10', by: 'dicky', a: 'ah3kl@v1', b: 'bx9mq@v1', splitA: 70, splitB: 30, live: false },
-  { ver: 1, name: 'Initial publish', date: 'Apr 1', by: 'dicky', a: 'ah3kl@v1', b: null, splitA: 100, splitB: 0, live: false },
-]
-
 const LP_TITLES = {
   owt32: 'Metafiber Main Sales Letter',
   bx9m2: 'Metafiber Promo Ramadan',
@@ -40,33 +34,6 @@ function VariantsTab({ lpId }) {
         lpId={lpId}
         onPublish={() => showToast('Published successfully')}
       />
-
-      {/* Publish History */}
-      <div style={{ ...card, marginBottom: 0, marginTop: 20 }}>
-        <div style={{ ...cardHeader }}>Publish History</div>
-        {mockPublishes.map((p, i) => (
-          <div key={p.ver} style={{ padding: '14px 20px', borderTop: i === 0 ? 'none' : '1px solid #F1F5F9', display: 'flex', alignItems: 'center', gap: 14 }}
-            onMouseEnter={e => e.currentTarget.style.background = '#F8FBFF'}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-            <div style={{ width: 30, height: 30, borderRadius: 7, background: p.live ? '#0D4A80' : '#EEF2F8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: p.live ? '#FFF' : '#64748B', flexShrink: 0 }}>
-              #{p.ver}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 500, color: '#0F172A', marginBottom: 2 }}>{p.name}</div>
-              <div style={{ fontSize: 11, color: '#94A3B8' }}>
-                {p.date} · by {p.by} · A: {p.a} ({p.splitA}%) {p.b ? `· B: ${p.b} (${p.splitB}%)` : ''}
-              </div>
-            </div>
-            {p.live
-              ? <span style={{ padding: '3px 10px', background: '#DBEAFE', color: '#1D4ED8', borderRadius: 20, fontSize: 11, fontWeight: 600 }}>● Live</span>
-              : <button id={`revert-${p.ver}`} onClick={() => showToast(`Reverted to Publish #${p.ver}`)}
-                  style={{ padding: '5px 12px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 5, fontSize: 11, color: '#64748B', cursor: 'pointer' }}>
-                  Revert to this
-                </button>
-            }
-          </div>
-        ))}
-      </div>
     </div>
   )
 }

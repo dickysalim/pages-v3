@@ -222,11 +222,21 @@ const loadLog = lpId => { try { return JSON.parse(localStorage.getItem(logKey(lp
 const saveLog = (lpId, log) => localStorage.setItem(logKey(lpId), JSON.stringify(log))
 
 /* ── PublishModal ────────────────────────────────────────────── */
-function PublishModal({ onConfirm, onCancel }) {
+function PublishModal({ onConfirm, onCancel, existingNames }) {
   const [name, setName] = useState('')
   const [desc, setDesc] = useState('')
+  const [nameError, setNameError] = useState('')
   const nameRef = useRef(null)
   useEffect(() => { nameRef.current?.focus() }, [])
+
+  const isDuplicate = name.trim() && existingNames.includes(name.trim().toLowerCase())
+  const canSubmit = name.trim() && !isDuplicate
+
+  const handleSubmit = () => {
+    if (!name.trim()) return
+    if (isDuplicate) { setNameError('This publish name is already used. Please choose a unique name.'); return }
+    onConfirm(name.trim(), desc.trim())
+  }
 
   const inputBase = {
     width: '100%', padding: '8px 10px', fontSize: 13, fontFamily: 'var(--font)',
@@ -246,11 +256,17 @@ function PublishModal({ onConfirm, onCancel }) {
           <label style={{ fontSize: 11, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 5 }}>Publish Name <span style={{ color: '#EF4444' }}>*</span></label>
           <input
             ref={nameRef}
-            value={name} onChange={e => setName(e.target.value)}
+            value={name}
+            onChange={e => { setName(e.target.value); setNameError('') }}
             placeholder="e.g. Launch A/B Test v2"
-            style={inputBase}
-            onKeyDown={e => { if (e.key === 'Enter' && name.trim()) onConfirm(name.trim(), desc.trim()) }}
+            style={{ ...inputBase, borderColor: isDuplicate ? '#FCA5A5' : '#D1D5DB', background: isDuplicate ? '#FFF5F5' : '#F9FAFB' }}
+            onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }}
           />
+          {isDuplicate && (
+            <div style={{ fontSize: 11, color: '#DC2626', marginTop: 5, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span>⚠</span> This publish name already exists — please use a unique name.
+            </div>
+          )}
           <label style={{ fontSize: 11, fontWeight: 600, color: '#374151', display: 'block', marginTop: 14, marginBottom: 5 }}>Description <span style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 400 }}>(optional)</span></label>
           <textarea
             value={desc} onChange={e => setDesc(e.target.value)}
@@ -262,9 +278,9 @@ function PublishModal({ onConfirm, onCancel }) {
         <div style={{ padding: '12px 20px', borderTop: '1px solid #E2E6EC', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button onClick={onCancel} style={{ padding: '7px 16px', fontSize: 12, fontWeight: 600, borderRadius: 6, border: '1px solid #D1D5DB', background: '#fff', color: '#374151', cursor: 'pointer' }}>Cancel</button>
           <button
-            onClick={() => { if (name.trim()) onConfirm(name.trim(), desc.trim()) }}
-            disabled={!name.trim()}
-            style={{ padding: '7px 16px', fontSize: 12, fontWeight: 600, borderRadius: 6, border: 'none', cursor: name.trim() ? 'pointer' : 'default', background: name.trim() ? 'var(--accent)' : '#E2E6EC', color: name.trim() ? '#fff' : '#94A3B8' }}>
+            onClick={handleSubmit}
+            disabled={!canSubmit}
+            style={{ padding: '7px 16px', fontSize: 12, fontWeight: 600, borderRadius: 6, border: 'none', cursor: canSubmit ? 'pointer' : 'default', background: canSubmit ? 'var(--accent)' : '#E2E6EC', color: canSubmit ? '#fff' : '#94A3B8' }}>
             Publish
           </button>
         </div>
@@ -300,7 +316,9 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
   const [previewVariant, setPreviewVariant] = useState(null)
   const [previewAnchor, setPreviewAnchor] = useState(null)
   const [showModal, setShowModal] = useState(false)
+  const [expandedLogId, setExpandedLogId] = useState(null)
   const [publishLog, setPublishLog] = useState(() => loadLog(lpId))
+  const existingNames = publishLog.map(e => e.name.toLowerCase())
 
   // snapshot of last-published state for dirty detection
   const publishedRef = useRef({ split: 60, slotAId: variants[0]?.id ?? null, slotBId: null })
@@ -325,14 +343,19 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
   const handlePublish = () => { if (isDirty) setShowModal(true) }
 
   const confirmPublish = useCallback((name, desc) => {
+    const ver = publishLog.length + 1
     const entry = {
       id: Date.now(),
+      ver,
       name,
       desc,
       timestamp: new Date().toISOString(),
+      publisher: 'Dicky',
       split,
       slotA: slotA ? { id: slotA.id, title: slotA.title } : null,
       slotB: slotB ? { id: slotB.id, title: slotB.title } : null,
+      pageViews: 0,
+      conversions: 0,
     }
     const newLog = [entry, ...publishLog]
     setPublishLog(newLog)
@@ -345,7 +368,7 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
 
   return (
     <>
-      {showModal && <PublishModal onConfirm={confirmPublish} onCancel={() => setShowModal(false)} />}
+      {showModal && <PublishModal onConfirm={confirmPublish} onCancel={() => setShowModal(false)} existingNames={existingNames} />}
       <MiniPhonePreview variant={previewVariant} anchorRect={previewAnchor} />
 
       {/* two-column — left panel is fixed to phone width, right panel takes remaining space */}
@@ -481,8 +504,10 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
 
       </div>
 
-      {/* ── Publish Log panel ───────────────────────────── */}
+      {/* ── Publish Log table ───────────────────────────── */}
       <div style={{ marginTop: 14, background: '#fff', border: '1px solid #E2E6EC', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(15,23,42,.06)' }}>
+
+        {/* panel header */}
         <div style={{ padding: '10px 16px', borderBottom: '1px solid #E2E6EC', background: '#EEF2F8', display: 'flex', alignItems: 'center', gap: 8 }}>
           <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="#6B7280" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="3" width="14" height="14" rx="2" /><path d="M7 7h6M7 10h6M7 13h4" />
@@ -492,40 +517,115 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
         </div>
 
         {publishLog.length === 0 ? (
-          <div style={{ padding: '20px 16px', textAlign: 'center', fontSize: 11, color: '#C8D0DC' }}>No publishes yet</div>
+          <div style={{ padding: '24px 16px', textAlign: 'center', fontSize: 11, color: '#C8D0DC' }}>No publishes yet — click Publish to create the first entry.</div>
         ) : (
-          <div style={{ maxHeight: 220, overflowY: 'auto' }}>
-            {publishLog.map((entry, i) => {
-              const d = new Date(entry.timestamp)
-              const dateStr = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-              const timeStr = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-              return (
-                <div key={entry.id} style={{
-                  display: 'grid', gridTemplateColumns: '140px 1fr auto',
-                  padding: '10px 16px', gap: 12, alignItems: 'start',
-                  borderTop: i === 0 ? 'none' : '1px solid #F1F5F9',
-                  background: i % 2 === 0 ? '#fff' : '#FAFAFA',
-                }}>
-                  {/* timestamp */}
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: '#374151' }}>{dateStr}</div>
-                    <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 1 }}>{timeStr}</div>
-                  </div>
-                  {/* name + desc */}
-                  <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#0F172A' }}>{entry.name}</div>
-                    {entry.desc && <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2, lineHeight: 1.4 }}>{entry.desc}</div>}
-                    <div style={{ display: 'flex', gap: 6, marginTop: 5, flexWrap: 'wrap' }}>
-                      {entry.slotA && <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--accent)', background: '#EBF4FF', border: '1px solid #BFDBFE', borderRadius: 20, padding: '1px 7px' }}>A: {entry.slotA.title}</span>}
-                      {entry.slotB && <span style={{ fontSize: 10, fontWeight: 600, color: '#475569', background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: 20, padding: '1px 7px' }}>B: {entry.slotB.title}</span>}
-                      <span style={{ fontSize: 10, color: '#94A3B8', background: '#F8FAFC', border: '1px solid #E2E6EC', borderRadius: 20, padding: '1px 7px', fontFamily: 'DM Mono, monospace' }}>Split {entry.split}/{100 - entry.split}</span>
-                    </div>
-                  </div>
-                  {/* status badge */}
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#059669', background: '#D1FAE5', border: '1px solid #A7F3D0', borderRadius: 20, padding: '2px 8px', whiteSpace: 'nowrap' }}>Published</div>
-                </div>
-              )
-            })}
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E6EC' }}>
+                  {['Ver', 'Date', 'Publish Detail', 'Variant', 'Publisher', 'Page Views', 'Conversions', 'LP2L', ''].map(h => (
+                    <th key={h} style={{ padding: '8px 14px', textAlign: 'left', fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#94A3B8', whiteSpace: 'nowrap', position: 'sticky', top: 0, background: '#F8FAFC', zIndex: 1 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+            </table>
+            <div style={{ maxHeight: 384, overflowY: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <tbody>
+                {publishLog.map((entry, i) => {
+                  const d = new Date(entry.timestamp)
+                  const dateStr = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                  const timeStr = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+                  const ver = entry.ver ?? (publishLog.length - i)
+                  const lp2l = entry.pageViews > 0 ? ((entry.conversions / entry.pageViews) * 100).toFixed(1) + '%' : '—'
+                  return (
+                    <tr key={entry.id} style={{ borderTop: i === 0 ? 'none' : '1px solid #F1F5F9', background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
+
+                      {/* Ver */}
+                      <td style={{ padding: '10px 14px', fontFamily: 'DM Mono, monospace', fontWeight: 700, color: '#0F172A', whiteSpace: 'nowrap' }}>
+                        {String(ver).padStart(3, '0')}
+                      </td>
+
+                      {/* Date */}
+                      <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontWeight: 600, color: '#374151' }}>{dateStr}</div>
+                        <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 1 }}>{timeStr}</div>
+                      </td>
+
+                      {/* Publish Detail */}
+                      <td style={{ padding: '10px 14px', minWidth: 180 }}>
+                        <div style={{ fontWeight: 700, color: '#0F172A', marginBottom: entry.desc ? 2 : 0 }}>{entry.name}</div>
+                        {entry.desc && (
+                          <>
+                            <div style={{
+                              fontSize: 11, color: '#6B7280', lineHeight: 1.5,
+                              display: '-webkit-box', WebkitLineClamp: expandedLogId === entry.id ? 'unset' : 2,
+                              WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                            }}>
+                              {entry.desc}
+                            </div>
+                            <button
+                              onClick={() => setExpandedLogId(expandedLogId === entry.id ? null : entry.id)}
+                              style={{ fontSize: 10, color: 'var(--accent)', background: 'none', border: 'none', padding: '2px 0 0', cursor: 'pointer', fontWeight: 600 }}
+                            >
+                              {expandedLogId === entry.id ? 'Show less ↑' : 'Show more ↓'}
+                            </button>
+                          </>
+                        )}
+                      </td>
+
+                      {/* Variant */}
+                      <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          {entry.slotA && (
+                            <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--accent)', background: '#EBF4FF', border: '1px solid #BFDBFE', borderRadius: 20, padding: '1px 8px', display: 'inline-block' }}>
+                              A·{entry.split}% {entry.slotA.title}
+                            </span>
+                          )}
+                          {entry.slotB && (
+                            <span style={{ fontSize: 10, fontWeight: 600, color: '#475569', background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: 20, padding: '1px 8px', display: 'inline-block' }}>
+                              B·{100 - entry.split}% {entry.slotB.title}
+                            </span>
+                          )}
+                          {!entry.slotB && entry.slotA && (
+                            <span style={{ fontSize: 10, color: '#CBD5E1', fontFamily: 'DM Mono, monospace' }}>B —</span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Publisher */}
+                      <td style={{ padding: '10px 14px', color: '#374151', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                        {entry.publisher || 'Dicky'}
+                      </td>
+
+                      {/* Page Views */}
+                      <td style={{ padding: '10px 14px', fontFamily: 'DM Mono, monospace', color: '#374151', textAlign: 'right' }}>
+                        {entry.pageViews?.toLocaleString() ?? 0}
+                      </td>
+
+                      {/* Conversions */}
+                      <td style={{ padding: '10px 14px', fontFamily: 'DM Mono, monospace', color: '#374151', textAlign: 'right' }}>
+                        {entry.conversions?.toLocaleString() ?? 0}
+                      </td>
+
+                      {/* LP2L */}
+                      <td style={{ padding: '10px 14px', fontFamily: 'DM Mono, monospace', fontWeight: 700, color: entry.pageViews > 0 ? '#2A7D4F' : '#C8D0DC', textAlign: 'right' }}>
+                        {lp2l}
+                      </td>
+
+                      {/* Status — only the newest entry is live */}
+                      <td style={{ padding: '10px 14px' }}>
+                        {i === 0 && (
+                          <span style={{ fontSize: 10, fontWeight: 700, color: '#059669', background: '#D1FAE5', border: '1px solid #A7F3D0', borderRadius: 20, padding: '2px 10px', whiteSpace: 'nowrap' }}>Published</span>
+                        )}
+                      </td>
+
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+            </div>
           </div>
         )}
       </div>
