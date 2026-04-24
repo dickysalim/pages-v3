@@ -683,8 +683,18 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
     e.preventDefault()
     const v = draggingRef.current
     if (!v) return
-    if (slot === 'A') { setSlotA(v); setDragOverA(false) }
-    else { setSlotB(v); setDragOverB(false) }
+    // No-op: dropping back onto the same slot it was published in
+    if (slot === 'A' && v.id === publishedRef.current.slotAId) { setDragOverA(false); draggingRef.current = null; return }
+    if (slot === 'B' && v.id === publishedRef.current.slotBId) { setDragOverB(false); draggingRef.current = null; return }
+    if (slot === 'A') {
+      setSlotA(v)
+      if (slotB?.id === v.id) setSlotB(null)  // clear from other slot if same variant
+      setDragOverA(false)
+    } else {
+      setSlotB(v)
+      if (slotA?.id === v.id) setSlotA(null)  // clear from other slot if same variant
+      setDragOverB(false)
+    }
     showToast(`${v.title} placed in Position ${slot}`)
     draggingRef.current = null
   }
@@ -866,54 +876,77 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
                   .badge-pending { animation: pendingPulse 1.6s ease-in-out infinite; }
                 `}</style>
                 {[...variantList].sort((a, b) => {
-                  // Tier: 0=Draft, 1=Live, 2=PendingAdd, 3=PendingRemoval, 4=Inactive
-                  const tierOf = (v) => {
-                    const aId = slotA?.id, bId = slotB?.id
-                    if (v.id === aId || v.id === bId) return 1
-                    if ((v.pageViews ?? 0) === 0 && v.id !== aId && v.id !== bId) return 0
-                    if (v.id === pendingAddAId || v.id === pendingAddBId) return 2
-                    if (pendingRemovalIds.includes(v.id)) return 3
-                    return 4
+                  const wasA = a.id === publishedRef.current.slotAId
+                  const wasB = a.id === publishedRef.current.slotBId
+                  const wasAb = b.id === publishedRef.current.slotAId
+                  const wasBb = b.id === publishedRef.current.slotBId
+                  // Tier 0=Draft, 1=Was-published (stable/leaving/swapped), 2=Brand-new entering, 4=Inactive
+                  const tierOf = (v, wasSlotA, wasSlotB) => {
+                    if (wasSlotA || wasSlotB) return 1                          // was ever live → stays near top
+                    const inSlot = v.id === slotA?.id || v.id === slotB?.id
+                    if (inSlot) return 2                                         // new entrant
+                    if ((v.pageViews ?? 0) === 0) return 0                      // draft
+                    return 4                                                     // inactive
                   }
-                  const ta = tierOf(a), tb = tierOf(b)
+                  const ta = tierOf(a, wasA, wasB), tb = tierOf(b, wasAb, wasBb)
                   if (ta !== tb) return ta - tb
                   return (b.ver ?? 0) - (a.ver ?? 0)
                 }).map((v, i) => {
                   const isSlotA = slotA?.id === v.id
                   const isSlotB = slotB?.id === v.id
                   const inSlot = isSlotA || isSlotB
-                  const isPendingRemovalA = v.id === pendingRemovalAId
-                  const isPendingRemovalB = v.id === pendingRemovalBId
-                  const isPendingRemoval = isPendingRemovalA || isPendingRemovalB
-                  const isPendingAddA = v.id === pendingAddAId && !isSlotA
-                  const isPendingAddB = v.id === pendingAddBId && !isSlotB
-                  const isDraft = !inSlot && !isPendingAddA && !isPendingAddB && (v.pageViews ?? 0) === 0
-                  // all variants are draggable except those already in a slot
-                  const canDrag = !inSlot
+                  const wasSlotA = v.id === publishedRef.current.slotAId
+                  const wasSlotB = v.id === publishedRef.current.slotBId
+
+                  // ── Derive the 8 possible states ──────────────────────────
+                  const stableA    = wasSlotA && isSlotA                  // committed live in A
+                  const stableB    = wasSlotB && isSlotB                  // committed live in B
+                  const swappedToB = wasSlotA && isSlotB                  // was A, now dragged to B
+                  const swappedToA = wasSlotB && isSlotA                  // was B, now dragged to A
+                  const leavingA   = wasSlotA && !isSlotA && !isSlotB    // was A, removed
+                  const leavingB   = wasSlotB && !isSlotA && !isSlotB    // was B, removed
+                  const enteringA  = !wasSlotA && !wasSlotB && isSlotA   // new to A
+                  const enteringB  = !wasSlotA && !wasSlotB && isSlotB   // new to B
+
+                  const isDraft = !inSlot && !wasSlotA && !wasSlotB && (v.pageViews ?? 0) === 0
+                  const isPending = swappedToB || swappedToA || leavingA || leavingB || enteringA || enteringB
+
+                  // Stable published variants CAN be dragged (to swap slots or leave)
+                  // handleDrop already ignores same-slot drops silently
+                  const canDrag = !inSlot || stableA || stableB
 
                   // ── Status label + style ──────────────────────────────────
+                  // Stable: bold filled blue | Leaving: soft red + right arrow | Entering: soft green + left arrow
                   let statusLabel, statusStyle, statusPending = false
-                  if (isSlotA) {
+                  if (stableA) {
                     statusLabel = '● Position A'
-                    statusStyle = { color: 'var(--accent)', background: '#EBF4FF', border: '1px solid #BFDBFE' }
-                  } else if (isSlotB) {
+                    statusStyle = { color: '#fff', background: '#2563EB', border: '1px solid #1D4ED8' }
+                  } else if (stableB) {
                     statusLabel = '● Position B'
-                    statusStyle = { color: '#475569', background: '#F1F5F9', border: '1px solid #CBD5E1' }
-                  } else if (isPendingAddA) {
-                    statusLabel = '→ Moving to A'
-                    statusStyle = { color: 'var(--accent)', background: '#DBEAFE', border: '1px dashed var(--accent)' }
+                    statusStyle = { color: '#fff', background: '#1D4ED8', border: '1px solid #1E3A8A' }
+                  } else if (swappedToB) {
+                    statusLabel = '← Entering B'
+                    statusStyle = { color: '#16A34A', background: '#F0FDF4', border: '1px dashed #86EFAC' }
                     statusPending = true
-                  } else if (isPendingAddB) {
-                    statusLabel = '→ Moving to B'
-                    statusStyle = { color: '#475569', background: '#E2E8F0', border: '1px dashed #94A3B8' }
+                  } else if (swappedToA) {
+                    statusLabel = '← Entering A'
+                    statusStyle = { color: '#16A34A', background: '#F0FDF4', border: '1px dashed #86EFAC' }
                     statusPending = true
-                  } else if (isPendingRemovalA) {
-                    statusLabel = '← Leaving A'
-                    statusStyle = { color: '#C2410C', background: '#FFF7ED', border: '1px dashed #FB923C' }
+                  } else if (leavingA) {
+                    statusLabel = 'Leaving A →'
+                    statusStyle = { color: '#DC2626', background: '#FEF2F2', border: '1px dashed #FCA5A5' }
                     statusPending = true
-                  } else if (isPendingRemovalB) {
-                    statusLabel = '← Leaving B'
-                    statusStyle = { color: '#64748B', background: '#F1F5F9', border: '1px dashed #94A3B8' }
+                  } else if (leavingB) {
+                    statusLabel = 'Leaving B →'
+                    statusStyle = { color: '#DC2626', background: '#FEF2F2', border: '1px dashed #FCA5A5' }
+                    statusPending = true
+                  } else if (enteringA) {
+                    statusLabel = '← Entering A'
+                    statusStyle = { color: '#16A34A', background: '#F0FDF4', border: '1px dashed #86EFAC' }
+                    statusPending = true
+                  } else if (enteringB) {
+                    statusLabel = '← Entering B'
+                    statusStyle = { color: '#16A34A', background: '#F0FDF4', border: '1px dashed #86EFAC' }
                     statusPending = true
                   } else if (isDraft) {
                     statusLabel = 'Draft'
@@ -924,24 +957,28 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
                   }
 
                   // ── Row tint ──────────────────────────────────────────────
-                  const rowBg = isSlotA ? '#EFF6FF'
-                    : isSlotB ? '#F8FAFC'
-                    : isPendingAddA ? '#F0F7FF'
-                    : isPendingAddB ? '#F8FAFC'
-                    : isPendingRemovalA ? '#FFF7ED'
-                    : isPendingRemovalB ? '#F8FAFC'
-                    : isDraft ? '#FFFDE7'
+                  const rowBg = stableA    ? '#DBEAFE'
+                    : stableB     ? '#DBEAFE'
+                    : swappedToB  ? '#DBEAFE'
+                    : swappedToA  ? '#DBEAFE'
+                    : leavingA    ? '#DBEAFE'
+                    : leavingB    ? '#DBEAFE'
+                    : enteringA   ? '#EFF6FF'
+                    : enteringB   ? '#EFF6FF'
+                    : isDraft     ? '#FFFDE7'
                     : i % 2 === 0 ? '#fff' : '#FAFAFA'
 
                   // ── Left border ───────────────────────────────────────────
-                  // Solid = committed state; Dashed = pending (unsaved change)
-                  const leftBorder = isSlotA ? '3px solid var(--accent)'
-                    : isSlotB ? '3px solid #94A3B8'
-                    : isPendingAddA ? '3px dashed var(--accent)'
-                    : isPendingAddB ? '3px dashed #94A3B8'
-                    : isPendingRemovalA ? '3px dashed #FB923C'
-                    : isPendingRemovalB ? '3px dashed #94A3B8'
-                    : isDraft ? '3px solid #F59E0B'
+                  // Solid bold blue = active; Dashed red = leaving; Dashed soft blue = entering
+                  const leftBorder = stableA    ? '3px solid #1D4ED8'
+                    : stableB     ? '3px solid #1D4ED8'
+                    : swappedToB  ? '3px dashed #93C5FD'
+                    : swappedToA  ? '3px dashed #93C5FD'
+                    : leavingA    ? '3px dashed #1D4ED8'
+                    : leavingB    ? '3px dashed #1D4ED8'
+                    : enteringA   ? '3px dashed #93C5FD'
+                    : enteringB   ? '3px dashed #93C5FD'
+                    : isDraft     ? '3px solid #F59E0B'
                     : '3px solid transparent'
 
                   const isExpanded = expandedVariantId === v.id
@@ -974,9 +1011,8 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
                         borderTop: i === 0 ? 'none' : '1px solid #F1F5F9',
                         borderLeft: leftBorder,
                         background: rowBg,
-                        opacity: isPendingRemoval ? 0.5 : 1,
                         cursor: canDrag ? 'grab' : 'default',
-                        transition: 'background .1s, opacity .2s',
+                        transition: 'background .1s',
                       }}
                     >
                       {/* Drag handle */}
