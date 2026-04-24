@@ -616,8 +616,9 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
   const [variantList, setVariantList] = useState(variants)
 
   const [split, setSplit] = useState(60)
-  const [slotA, setSlotA] = useState(variants[0] ? { ...variants[0] } : null)
-  const [slotB, setSlotB] = useState(null)
+  // seed with v006 in A, v007 in B so the initial view shows both slots filled
+  const [slotA, setSlotA] = useState(() => { const v = variants.find(x => x.id === 'v006') ?? variants[0]; return v ? { ...v } : null })
+  const [slotB, setSlotB] = useState(() => { const v = variants.find(x => x.id === 'v007'); return v ? { ...v } : null })
   const [dragOverA, setDragOverA] = useState(false)
   const [dragOverB, setDragOverB] = useState(false)
   const draggingRef = useRef(null)
@@ -655,8 +656,12 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
     showToast(`Draft “${title}” created`)
   }
 
-  // snapshot of last-published state for dirty detection
-  const publishedRef = useRef({ split: 60, slotAId: variants[0]?.id ?? null, slotBId: null })
+  // snapshot of last-published state — seed to match initial slot state
+  const publishedRef = useRef({
+    split: 60,
+    slotAId: variants.find(x => x.id === 'v006')?.id ?? variants[0]?.id ?? null,
+    slotBId: variants.find(x => x.id === 'v007')?.id ?? null,
+  })
   const isDirty = (
     split !== publishedRef.current.split ||
     (slotA?.id ?? null) !== publishedRef.current.slotAId ||
@@ -665,11 +670,14 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
 
   const assignedIds = [slotA?.id, slotB?.id].filter(Boolean)
 
-  // variants that were live on last publish but have since been removed from their slot
-  const pendingRemovalIds = [
-    publishedRef.current.slotAId && (slotA?.id ?? null) !== publishedRef.current.slotAId ? publishedRef.current.slotAId : null,
-    publishedRef.current.slotBId && (slotB?.id ?? null) !== publishedRef.current.slotBId ? publishedRef.current.slotBId : null,
-  ].filter(Boolean)
+  // IDs that WERE live but are no longer in their slot (pending removal)
+  const pendingRemovalAId = publishedRef.current.slotAId && (slotA?.id ?? null) !== publishedRef.current.slotAId ? publishedRef.current.slotAId : null
+  const pendingRemovalBId = publishedRef.current.slotBId && (slotB?.id ?? null) !== publishedRef.current.slotBId ? publishedRef.current.slotBId : null
+  const pendingRemovalIds = [pendingRemovalAId, pendingRemovalBId].filter(Boolean)
+
+  // IDs that are newly assigned to a slot but weren't there on last publish (pending → live)
+  const pendingAddAId = slotA && slotA.id !== publishedRef.current.slotAId ? slotA.id : null
+  const pendingAddBId = slotB && slotB.id !== publishedRef.current.slotBId ? slotB.id : null
 
   const handleDrop = (slot, e) => {
     e.preventDefault()
@@ -849,30 +857,92 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
                 </tr>
               </thead>
               <tbody>
-                {[...variantList].sort((a, b) => (b.ver ?? 0) - (a.ver ?? 0)).map((v, i) => {
+                {/* pulsing animation for pending badges */}
+                <style>{`
+                  @keyframes pendingPulse {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.55; }
+                  }
+                  .badge-pending { animation: pendingPulse 1.6s ease-in-out infinite; }
+                `}</style>
+                {[...variantList].sort((a, b) => {
+                  // Tier: 0=Draft, 1=Live, 2=PendingAdd, 3=PendingRemoval, 4=Inactive
+                  const tierOf = (v) => {
+                    const aId = slotA?.id, bId = slotB?.id
+                    if (v.id === aId || v.id === bId) return 1
+                    if ((v.pageViews ?? 0) === 0 && v.id !== aId && v.id !== bId) return 0
+                    if (v.id === pendingAddAId || v.id === pendingAddBId) return 2
+                    if (pendingRemovalIds.includes(v.id)) return 3
+                    return 4
+                  }
+                  const ta = tierOf(a), tb = tierOf(b)
+                  if (ta !== tb) return ta - tb
+                  return (b.ver ?? 0) - (a.ver ?? 0)
+                }).map((v, i) => {
                   const isSlotA = slotA?.id === v.id
                   const isSlotB = slotB?.id === v.id
                   const inSlot = isSlotA || isSlotB
-                  const isDraft = !inSlot && (v.pageViews ?? 0) === 0
-                  const isPendingRemoval = pendingRemovalIds.includes(v.id)
-                  const canDrag = !inSlot && !isDraft
+                  const isPendingRemovalA = v.id === pendingRemovalAId
+                  const isPendingRemovalB = v.id === pendingRemovalBId
+                  const isPendingRemoval = isPendingRemovalA || isPendingRemovalB
+                  const isPendingAddA = v.id === pendingAddAId && !isSlotA
+                  const isPendingAddB = v.id === pendingAddBId && !isSlotB
+                  const isDraft = !inSlot && !isPendingAddA && !isPendingAddB && (v.pageViews ?? 0) === 0
+                  // all variants are draggable except those already in a slot
+                  const canDrag = !inSlot
 
-                  const statusLabel = isSlotA ? 'Position A' : isSlotB ? 'Position B' : isDraft ? 'Draft' : 'Inactive'
-                  const statusStyle = isSlotA
-                    ? { color: 'var(--accent)', background: '#EBF4FF', border: '1px solid #BFDBFE' }
-                    : isSlotB
-                    ? { color: '#475569', background: '#F1F5F9', border: '1px solid #CBD5E1' }
-                    : isDraft
-                    ? { color: '#92400E', background: '#FEF3C7', border: '1px solid #FDE68A' }
-                    : { color: '#6B7280', background: '#F3F4F6', border: '1px solid #E5E7EB' }
+                  // ── Status label + style ──────────────────────────────────
+                  let statusLabel, statusStyle, statusPending = false
+                  if (isSlotA) {
+                    statusLabel = '● Position A'
+                    statusStyle = { color: 'var(--accent)', background: '#EBF4FF', border: '1px solid #BFDBFE' }
+                  } else if (isSlotB) {
+                    statusLabel = '● Position B'
+                    statusStyle = { color: '#475569', background: '#F1F5F9', border: '1px solid #CBD5E1' }
+                  } else if (isPendingAddA) {
+                    statusLabel = '→ Moving to A'
+                    statusStyle = { color: 'var(--accent)', background: '#DBEAFE', border: '1px dashed var(--accent)' }
+                    statusPending = true
+                  } else if (isPendingAddB) {
+                    statusLabel = '→ Moving to B'
+                    statusStyle = { color: '#475569', background: '#E2E8F0', border: '1px dashed #94A3B8' }
+                    statusPending = true
+                  } else if (isPendingRemovalA) {
+                    statusLabel = '← Leaving A'
+                    statusStyle = { color: '#C2410C', background: '#FFF7ED', border: '1px dashed #FB923C' }
+                    statusPending = true
+                  } else if (isPendingRemovalB) {
+                    statusLabel = '← Leaving B'
+                    statusStyle = { color: '#64748B', background: '#F1F5F9', border: '1px dashed #94A3B8' }
+                    statusPending = true
+                  } else if (isDraft) {
+                    statusLabel = 'Draft'
+                    statusStyle = { color: '#92400E', background: '#FEF3C7', border: '1px solid #FDE68A' }
+                  } else {
+                    statusLabel = 'Inactive'
+                    statusStyle = { color: '#6B7280', background: '#F3F4F6', border: '1px solid #E5E7EB' }
+                  }
 
-                  // Row background: draft=yellow, in-slot=blue/slate, pending-removal=grey
-                  const rowBg = isPendingRemoval
-                    ? '#F9FAFB'
-                    : isSlotA ? '#EFF6FF'
+                  // ── Row tint ──────────────────────────────────────────────
+                  const rowBg = isSlotA ? '#EFF6FF'
                     : isSlotB ? '#F8FAFC'
+                    : isPendingAddA ? '#F0F7FF'
+                    : isPendingAddB ? '#F8FAFC'
+                    : isPendingRemovalA ? '#FFF7ED'
+                    : isPendingRemovalB ? '#F8FAFC'
                     : isDraft ? '#FFFDE7'
                     : i % 2 === 0 ? '#fff' : '#FAFAFA'
+
+                  // ── Left border ───────────────────────────────────────────
+                  // Solid = committed state; Dashed = pending (unsaved change)
+                  const leftBorder = isSlotA ? '3px solid var(--accent)'
+                    : isSlotB ? '3px solid #94A3B8'
+                    : isPendingAddA ? '3px dashed var(--accent)'
+                    : isPendingAddB ? '3px dashed #94A3B8'
+                    : isPendingRemovalA ? '3px dashed #FB923C'
+                    : isPendingRemovalB ? '3px dashed #94A3B8'
+                    : isDraft ? '3px solid #F59E0B'
+                    : '3px solid transparent'
 
                   const isExpanded = expandedVariantId === v.id
                   const lp2lColor = v.lp2l !== '—' ? '#2A7D4F' : '#C8D0DC'
@@ -902,13 +972,9 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
                       }}
                       style={{
                         borderTop: i === 0 ? 'none' : '1px solid #F1F5F9',
-                        borderLeft: isSlotA ? '3px solid var(--accent)'
-                          : isSlotB ? '3px solid #94A3B8'
-                          : isPendingRemoval ? '3px dashed #D1D5DB'
-                          : isDraft ? '3px solid #F59E0B'
-                          : '3px solid transparent',
+                        borderLeft: leftBorder,
                         background: rowBg,
-                        opacity: isPendingRemoval ? 0.45 : 1,
+                        opacity: isPendingRemoval ? 0.5 : 1,
                         cursor: canDrag ? 'grab' : 'default',
                         transition: 'background .1s, opacity .2s',
                       }}
@@ -992,15 +1058,12 @@ export default function LiveVariantConfig({ variants, lpId, onPublish }) {
 
                       {/* Status */}
                       <td style={{ padding: '10px 10px', verticalAlign: 'top', paddingTop: 11 }}>
-                        {isPendingRemoval ? (
-                          <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 20, padding: '2px 9px', whiteSpace: 'nowrap', display: 'inline-block', color: '#9CA3AF', background: '#F3F4F6', border: '1px dashed #D1D5DB' }}>
-                            Removing…
-                          </span>
-                        ) : (
-                          <span style={{ ...statusStyle, fontSize: 10, fontWeight: 700, borderRadius: 20, padding: '2px 9px', whiteSpace: 'nowrap', display: 'inline-block' }}>
-                            {statusLabel}
-                          </span>
-                        )}
+                        <span
+                           className={statusPending ? 'badge-pending' : undefined}
+                           style={{ ...statusStyle, fontSize: 10, fontWeight: 700, borderRadius: 20, padding: '2px 9px', whiteSpace: 'nowrap', display: 'inline-block' }}
+                         >
+                           {statusLabel}
+                         </span>
                       </td>
                     </tr>
                   )

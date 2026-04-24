@@ -4,9 +4,17 @@ import { useToast } from '../components/Toast'
 import LiveVariantConfig from '../components/LiveVariantConfig'
 
 const mockVariants = [
-  { id: 'ah3kl', ver: 1, title: 'Pricing First', description: 'Moving pricing above fold to increase purchase intent and reduce drop-off on first scroll. The hypothesis here is that visitors who see the price early self-qualify faster — if the price fits their budget, they continue with stronger intent. If it does not, they exit early, saving server resources and improving our overall conversion quality. Early tests on similar products suggest a 12–18% lift in qualified add-to-carts when price is surfaced within the first viewport. This variant removes the hero benefit carousel and replaces it with a compact pricing block, social proof count, and a primary CTA — keeping the fold clean and action-oriented.', lp2l: '8.4%', content: 'mta', publisher: 'Dicky', pageViews: 1240, conversions: 104 },
-  { id: 'bx9mq', ver: 2, title: 'Social Proof Heavy', description: 'Leading with testimonials and trust signals before introducing the product and price.', lp2l: '6.1%', content: 'fallback', publisher: 'Dicky', pageViews: 980, conversions: 60 },
-  { id: 'cx3df', ver: 3, title: 'Benefit Led', description: 'Opening with key product benefits before price reveal to frame value first.', lp2l: '—', content: 'mta', publisher: 'Dicky', pageViews: 0, conversions: 0 },
+  // Inactive — oldest variants
+  { id: 'v001', ver: 1, title: 'Pricing First', description: 'Moving pricing above fold to increase purchase intent and reduce drop-off on first scroll. Hypothesis: visitors who see price early self-qualify faster.', lp2l: '5.2%', content: 'mta', publisher: 'Dicky', pageViews: 3820, conversions: 199 },
+  { id: 'v002', ver: 2, title: 'Social Proof Heavy', description: 'Leading with testimonials and trust signals before introducing the product and price. Builds credibility upfront.', lp2l: '6.1%', content: 'fallback', publisher: 'Dicky', pageViews: 4100, conversions: 250 },
+  { id: 'v003', ver: 3, title: 'Benefit Led', description: 'Opening with key product benefits before price reveal to frame value first. Works best with warm traffic.', lp2l: '7.8%', content: 'mta', publisher: 'Dicky', pageViews: 2980, conversions: 232 },
+  { id: 'v004', ver: 4, title: 'Urgency + Scarcity', description: 'Countdown timer and low-stock messaging above fold. Designed for retargeting audiences already familiar with the product.', lp2l: '9.2%', content: 'fallback', publisher: 'Dicky', pageViews: 5640, conversions: 519 },
+  { id: 'v005', ver: 5, title: 'Video Hero', description: 'Auto-playing muted video loop replacing the static hero image. Strong for cold traffic as it provides product context without requiring reading.', lp2l: '8.4%', content: 'mta', publisher: 'Dicky', pageViews: 3210, conversions: 269 },
+  // Live variants (slotA and slotB initial)
+  { id: 'v006', ver: 6, title: 'Minimalist CTA', description: 'Stripped-down layout focusing attention on a single CTA with minimal distractions. Proven to increase click-through on first scroll.', lp2l: '11.3%', content: 'fallback', publisher: 'Dicky', pageViews: 6720, conversions: 759 },
+  { id: 'v007', ver: 7, title: 'Before & After', description: 'Side-by-side comparison of results before and after using the product. High trust-building format for skeptical audiences.', lp2l: '10.1%', content: 'mta', publisher: 'Dicky', pageViews: 4890, conversions: 494 },
+  // Draft — newest, never published
+  { id: 'v008', ver: 8, title: 'Community Led', description: '', lp2l: '—', content: 'fallback', publisher: 'Dicky', pageViews: 0, conversions: 0 },
 ]
 
 const LP_TITLES = {
